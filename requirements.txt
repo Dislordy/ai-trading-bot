@@ -1,0 +1,4 @@
+alpaca-py
+scikit-learn
+pandas
+python-dotenv
