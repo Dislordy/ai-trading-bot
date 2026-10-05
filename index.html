@@ -4,48 +4,97 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Trading Bot Scoreboard</title>
+<meta name="description" content="A Random Forest model paper trading SPY with $100,000 of fake money. Not investment advice.">
 <style>
-  :root { --bg:#f7f6f2; --card:#ffffff; --soft:#f1efe8; --text:#1f1e1c; --muted:#6b6a65; --line:#e3e1d9;
-          --green:#0f6e56; --greenbg:#e1f5ee; --gray:#888780; --amber:#854f0b; --amberbg:#faeeda; --red:#a32d2d; }
+  :root {
+    --bg:#f7f6f2; --card:#fcfcfb; --soft:#f1efe8; --text:#1f1e1c; --muted:#5f5e59; --line:#e3e1d9;
+    --ai:#2a78d6; --spy:#8a8984;
+    --up:#0f6e56; --upbg:#e1f5ee; --down:#a32d2d; --downbg:#fbe9e9; --amber:#854f0b; --amberbg:#faeeda;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#1a1a19; --card:#232322; --soft:#2c2c2a; --text:#f1efe8; --muted:#a8a69e; --line:#3a3a37;
-            --green:#5dcaa5; --greenbg:#0b3a2f; --gray:#b4b2a9; --amber:#fac775; --amberbg:#412402; --red:#f09595; }
+    :root {
+      --bg:#121211; --card:#1a1a19; --soft:#232322; --text:#f1efe8; --muted:#b0aea6; --line:#33332f;
+      --ai:#3987e5; --spy:#8f8d86;
+      --up:#5dcaa5; --upbg:#0b3a2f; --down:#f09595; --downbg:#3d1717; --amber:#fac775; --amberbg:#412402;
+    }
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.5; }
-  main { max-width:720px; margin:0 auto; padding:24px 16px 48px; }
-  h1 { font-size:24px; font-weight:600; margin:0; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.5; -webkit-text-size-adjust:100%; }
+  main { max-width:960px; margin:0 auto; padding:24px 16px 48px; }
+
+  .banner { display:flex; gap:10px; align-items:center; background:var(--amberbg); color:var(--amber); border-radius:12px; padding:10px 14px; font-size:14px; font-weight:600; margin-bottom:20px; }
+  .banner svg { flex:none; }
+  h1 { font-size:26px; font-weight:650; margin:0; letter-spacing:-0.01em; }
   .sub { color:var(--muted); font-size:14px; margin:4px 0 20px; }
-  .pill { display:inline-block; font-size:12px; padding:2px 10px; border-radius:99px; background:var(--amberbg); color:var(--amber); margin-left:8px; vertical-align:middle; }
-  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
-  .metric { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
-  .metric .label { font-size:12px; color:var(--muted); }
-  .metric .value { font-size:22px; font-weight:600; }
+
+  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:12px; }
+  .metric { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; min-width:0; }
+  .metric .label { font-size:13px; color:var(--muted); }
+  .metric .value { font-size:26px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.25; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .metric .note { font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
-  .card h2 { font-size:15px; font-weight:600; margin:0 0 8px; }
-  .verdict { font-size:15px; font-weight:600; }
-  .legend { display:flex; gap:16px; font-size:12px; color:var(--muted); margin-bottom:6px; }
-  .legend span::before { content:""; display:inline-block; width:12px; height:3px; margin-right:6px; vertical-align:middle; background:var(--c); }
-  svg { width:100%; height:180px; display:block; }
-  .tablewrap { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th { text-align:left; font-weight:500; color:var(--muted); font-size:12px; padding:6px 4px; }
-  td { padding:8px 4px; border-top:1px solid var(--line); }
+  .card h2 { font-size:16px; font-weight:600; margin:0 0 4px; }
+  .card .sub { margin:0 0 12px; }
+  .verdict { font-size:16px; font-weight:600; }
+
+  .legend { display:flex; flex-wrap:wrap; gap:16px; font-size:13px; color:var(--muted); margin-bottom:8px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend i { display:inline-block; width:18px; height:0; border-top:2px solid var(--c); }
+  .legend i.dash { border-top-style:dashed; }
+  .chartbox { position:relative; height:300px; }
+  .chartmsg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; color:var(--muted); font-size:14px; border:1px dashed var(--line); border-radius:8px; }
+  .chartmsg[hidden] { display:none; }
+
+  .tablewrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
+  th { text-align:left; font-weight:500; color:var(--muted); font-size:12px; padding:6px 8px; white-space:nowrap; }
+  td { padding:9px 8px; border-top:1px solid var(--line); white-space:nowrap; }
   .right { text-align:right; }
-  .up { color:var(--green); } .down { color:var(--red); }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .tag { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:99px; background:var(--soft); color:var(--muted); }
+  .tag.buy { background:var(--upbg); color:var(--up); }
+  .tag.sell { background:var(--downbg); color:var(--down); }
+  .why { color:var(--muted); font-size:12px; margin-left:6px; }
+  .bar { display:inline-block; vertical-align:middle; width:44px; height:6px; border-radius:3px; background:var(--soft); margin-left:8px; overflow:hidden; }
+  .bar b { display:block; height:100%; background:var(--ai); border-radius:3px; }
+
+  .empty { text-align:center; padding:32px 16px; color:var(--muted); }
   .foot { font-size:12px; color:var(--muted); margin-top:20px; }
-  @media (max-width:480px) { .metric .value { font-size:18px; } }
+
+  @media (max-width:720px) {
+    .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .metric .value { font-size:21px; }
+    .chartbox { height:240px; }
+    h1 { font-size:22px; }
+  }
+  @media (max-width:520px) {
+    .hide-sm { display:none; }
+    td, th { padding-left:6px; padding-right:6px; }
+    .bar, .why, .long { display:none; }
+    .short { display:inline !important; }
+    table { font-size:13px; }
+  }
+  .short { display:none; }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="title">Emmanuel's AI trading bot <span class="pill">Fake money</span></h1>
-  <p class="sub">Can a machine learning model beat the S&amp;P 500? Updated every weekday morning.</p>
+  <div class="banner" role="note">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <span>Fake money. Not investment advice. This is a paper trading experiment with $100,000 of simulated money.</span>
+  </div>
+
+  <h1>Emmanuel's AI trading bot</h1>
+  <p class="sub">Can a machine learning model beat just holding the S&amp;P 500? <span id="updated">Updated every weekday morning.</span></p>
 
   <div class="grid">
-    <div class="metric"><div class="label">Account value</div><div class="value" id="equity">–</div></div>
-    <div class="metric"><div class="label">AI return</div><div class="value" id="botret">–</div></div>
-    <div class="metric"><div class="label">Just holding SPY</div><div class="value" id="spyret">–</div></div>
+    <div class="metric"><div class="label">Account value</div><div class="value" id="equity">–</div><div class="note" id="equityNote">&nbsp;</div></div>
+    <div class="metric"><div class="label">Total profit/loss</div><div class="value" id="total">–</div><div class="note" id="totalNote">&nbsp;</div></div>
+    <div class="metric"><div class="label" id="todayLabel">Today</div><div class="value" id="today">–</div><div class="note" id="todayNote">&nbsp;</div></div>
+    <div class="metric"><div class="label">Just holding SPY</div><div class="value" id="spy">–</div><div class="note" id="spyNote">&nbsp;</div></div>
+    <div class="metric"><div class="label">Win rate</div><div class="value" id="winrate">–</div><div class="note" id="winNote">&nbsp;</div></div>
+    <div class="metric"><div class="label">Biggest drop from a peak</div><div class="value" id="dd">–</div><div class="note" id="ddNote">&nbsp;</div></div>
   </div>
 
   <div class="card">
@@ -54,93 +103,261 @@
   </div>
 
   <div class="card">
-    <h2 id="charttitle">AI vs. SPY</h2>
-    <div class="legend"><span style="--c:var(--green)">AI bot</span><span style="--c:var(--gray)">SPY</span></div>
-    <svg id="chart" viewBox="0 0 600 180" preserveAspectRatio="none" aria-label="Chart of AI bot return vs SPY return"></svg>
+    <h2 id="chartTitle">Account value vs. just holding SPY</h2>
+    <p class="sub">What the same starting money would be worth if it had simply bought SPY on day one and held it.</p>
+    <div class="legend"><span style="--c:var(--ai)"><i></i>AI bot</span><span style="--c:var(--spy)"><i class="dash"></i>Just holding SPY</span></div>
+    <div class="chartbox"><canvas id="chart" role="img" aria-label="Line chart of the AI bot's account value compared with just holding SPY"></canvas><div class="chartmsg" id="chartMsg" hidden></div></div>
   </div>
 
   <div class="card">
     <h2>Every decision</h2>
+    <p class="sub">Newest first. Confidence is the model's estimated chance that SPY goes up; it buys above 55%.</p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Date</th><th>AI confidence</th><th>Action</th><th class="right">Account</th></tr></thead>
-        <tbody id="rows"></tbody>
+        <thead><tr><th>Date</th><th>Confidence</th><th>Decision</th><th class="right">SPY price</th><th class="right">Account</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <p class="foot">Paper trading on Alpaca with $100,000 of simulated money. Not investment advice. The AI uses a Random Forest model trained on SPY's recent price momentum, trend, volatility, and volume.</p>
+  <p class="foot">
+    Paper trading on Alpaca with $100,000 of simulated money. No real money is involved and nothing here is investment advice.
+    The AI is a Random Forest model trained on SPY's recent momentum, trend, volatility and volume. It puts 10% of the account into SPY when it's more than 55% confident of an up day, and sells otherwise.
+    Win rate counts completed buy-then-sell trades, using the SPY price when each decision was made.
+  </p>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script>
-  // Read the trade log straight from the repository so the page is always current.
+  // ---- Where the data comes from ----
+  // 1) trade_log.csv straight from the repository's main branch (live within minutes of each run)
+  // 2) fallback: the copy published next to this page (also used when opening the file locally)
   const host = location.hostname;
   const owner = host.endsWith(".github.io") ? host.split(".")[0] : null;
-  const repo = location.pathname.split("/").filter(Boolean)[0];
-  const csvUrl = owner && repo
-    ? `https://raw.githubusercontent.com/${owner}/${repo}/main/trade_log.csv`
-    : "trade_log.csv";
+  const repo = location.pathname.split("/").filter(Boolean)[0] || (owner ? `${owner}.github.io` : null);
+  const sources = [];
+  if (owner && repo) sources.push(`https://raw.githubusercontent.com/${owner}/${repo}/main/trade_log.csv`);
+  sources.push("trade_log.csv");
 
-  const pct = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
-  const money = x => "$" + Math.round(x).toLocaleString();
-  const fmtDate = d => new Date(d.replace(" ", "T")).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const actions = { BUY: "Bought SPY", SELL: "Sold SPY", HOLD: "Held SPY", CASH: "Stayed in cash" };
+  const STARTING_CASH = 100000;  // the paper account opened with $100,000 of fake money
 
-  fetch(csvUrl + "?t=" + Date.now())
-    .then(r => { if (!r.ok) throw new Error("no log"); return r.text(); })
-    .then(text => {
-      const lines = text.trim().split("\n").slice(1).filter(Boolean);
-      const rows = lines.map(l => {
-        const [date, prob, action, equity, spy] = l.split(",");
-        return { date, prob: +prob, action, equity: +equity, spy: +spy };
-      });
-      if (!rows.length) throw new Error("empty");
-      render(rows);
-    })
-    .catch(() => {
-      document.getElementById("verdict").textContent = "No trades yet";
-      document.getElementById("latest").textContent = "The first update arrives the next weekday morning.";
-    });
+  // ---- Formatting helpers ----
+  const $ = id => document.getElementById(id);
+  const money = x => (x < 0 ? "-$" : "$") + Math.abs(x).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const signedMoney = x => (x > 0 ? "+" : x < 0 ? "-" : "") + "$" + Math.abs(x).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  const pct = (x, d = 2) => (x > 0 ? "+" : "") + (x * 100).toFixed(d) + "%";
+  const toDate = s => new Date(s.trim().replace(" ", "T"));
+  const fmtDate = d => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const fmtDateLong = d => d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const tone = (el, x) => { el.classList.remove("up", "down"); if (x > 0) el.classList.add("up"); if (x < 0) el.classList.add("down"); };
+  const sameDay = (a, b) => a.toDateString() === b.toDateString();
+
+  async function load() {
+    for (const url of sources) {
+      try {
+        const r = await fetch(url + "?t=" + Date.now(), { cache: "no-store" });
+        if (!r.ok) continue;
+        const rows = parse(await r.text());
+        if (rows.length) return rows;
+      } catch (e) { /* try the next source */ }
+    }
+    return [];
+  }
+
+  function parse(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const head = lines.shift().split(",").map(h => h.trim());
+    const col = name => head.indexOf(name);
+    return lines.filter(Boolean).map(line => {
+      const c = line.split(",");
+      return {
+        date: toDate(c[col("date")]),
+        prob: +c[col("prob_up")],
+        action: (c[col("action")] || "").trim().toUpperCase(),
+        equity: +c[col("equity")],
+        spy: +c[col("spy_price")],
+      };
+    }).filter(r => !isNaN(r.equity) && !isNaN(r.spy) && !isNaN(r.date));
+  }
+
+  // ---- The numbers ----
+  function stats(rows) {
+    const first = rows[0], last = rows[rows.length - 1], prev = rows[rows.length - 2];
+    const start = STARTING_CASH;
+
+    // Buy-and-hold: the same starting money put into SPY on the first logged day
+    const hold = rows.map(r => start * r.spy / first.spy);
+
+    // Max drawdown: worst fall from a previous high in account value
+    let peak = { equity: start, date: first.date }, dd = { pct: 0, dollars: 0, peak: null, trough: null };
+    for (const r of rows) {
+      if (r.equity > peak.equity) peak = r;
+      const drop = r.equity / peak.equity - 1;
+      if (drop < dd.pct) dd = { pct: drop, dollars: r.equity - peak.equity, peak, trough: r };
+    }
+
+    // Trades: each BUY followed by a SELL is one completed trade
+    const trades = [];
+    let entry = null;
+    for (const r of rows) {
+      if (r.action === "BUY" && !entry) entry = r;
+      else if (r.action === "SELL" && entry) { trades.push({ ret: r.spy / entry.spy - 1, buy: entry, sell: r }); entry = null; }
+    }
+    const wins = trades.filter(t => t.ret > 0).length;
+    const orders = rows.filter(r => r.action === "BUY" || r.action === "SELL").length;
+
+    return { first, last, prev, start, hold, dd, trades, wins, orders, open: entry };
+  }
 
   function render(rows) {
-    const first = rows[0], last = rows[rows.length - 1];
-    const bot = last.equity / first.equity - 1;
-    const spy = last.spy / first.spy - 1;
+    const s = stats(rows);
+    const { first, last, prev, start } = s;
 
-    document.getElementById("equity").textContent = money(last.equity);
-    const b = document.getElementById("botret"); b.textContent = pct(bot); b.className = "value " + (bot >= 0 ? "up" : "down");
-    const s = document.getElementById("spyret"); s.textContent = pct(spy);
+    $("updated").textContent = `Last update ${fmtDateLong(last.date)}.`;
 
-    const lead = Math.abs(bot - spy) * 100;
-    document.getElementById("verdict").textContent =
-      lead < 0.05 ? "Dead even so far" :
-      bot > spy ? `The AI is beating SPY by ${lead.toFixed(1)} points` :
-                  `SPY is beating the AI by ${lead.toFixed(1)} points`;
-    document.getElementById("latest").textContent =
-      `Latest: ${fmtDate(last.date)}, the AI was ${Math.round(last.prob * 100)}% confident SPY would rise and ${actions[last.action]?.toLowerCase() || last.action}.`;
-    document.getElementById("charttitle").textContent = `AI vs. SPY since ${fmtDate(first.date)}`;
+    // Account value
+    $("equity").textContent = money(last.equity);
+    $("equityNote").textContent = `Started with ${money(start)}`;
 
-    drawChart(rows.map(r => r.equity / first.equity - 1), rows.map(r => r.spy / first.spy - 1));
+    // Total P/L
+    const total = last.equity - start, totalPct = last.equity / start - 1;
+    $("total").textContent = signedMoney(total); tone($("total"), total);
+    $("totalNote").textContent = `${pct(totalPct)} since the start`;
 
-    document.getElementById("rows").innerHTML = rows.slice().reverse().map(r => `
-      <tr><td>${fmtDate(r.date)}</td><td>${Math.round(r.prob * 100)}%</td>
-      <td>${actions[r.action] || r.action}</td><td class="right">${money(r.equity)}</td></tr>`).join("");
+    // Today's P/L (change since the previous run)
+    $("todayLabel").textContent = sameDay(last.date, new Date()) ? "Today's profit/loss" : `Profit/loss on ${fmtDate(last.date)}`;
+    if (prev) {
+      const d = last.equity - prev.equity;
+      $("today").textContent = signedMoney(d); tone($("today"), d);
+      $("todayNote").textContent = `${pct(last.equity / prev.equity - 1)} since ${fmtDate(prev.date)}`;
+    } else {
+      const d = last.equity - start;
+      $("today").textContent = signedMoney(d); tone($("today"), d);
+      $("todayNote").textContent = "First logged day";
+    }
+
+    // Buy and hold
+    const holdNow = s.hold[s.hold.length - 1], holdRet = holdNow / start - 1;
+    $("spy").textContent = money(holdNow);
+    $("spyNote").textContent = `${pct(holdRet)} (${signedMoney(holdNow - start)})`;
+
+    // Win rate
+    if (s.trades.length) {
+      $("winrate").textContent = Math.round(s.wins / s.trades.length * 100) + "%";
+      $("winNote").textContent = `${s.wins} of ${s.trades.length} trade${s.trades.length === 1 ? "" : "s"} made money` + (s.open ? " · 1 open" : "");
+    } else {
+      $("winrate").textContent = "–";
+      $("winNote").textContent = s.open ? "1 trade open, none finished yet" : "No trades yet";
+    }
+
+    // Max drawdown
+    if (s.dd.trough) {
+      $("dd").textContent = pct(s.dd.pct); tone($("dd"), -1);
+      $("ddNote").textContent = `${signedMoney(s.dd.dollars)}, ${fmtDate(s.dd.peak.date)} to ${fmtDate(s.dd.trough.date)}`;
+    } else {
+      $("dd").textContent = "0%";
+      $("ddNote").textContent = "No drop from a high yet";
+    }
+
+    // Verdict
+    const lead = (totalPct - holdRet) * 100;
+    $("verdict").textContent =
+      Math.abs(lead) < 0.05 ? "Dead even with SPY so far" :
+      lead > 0 ? `The AI is beating SPY by ${lead.toFixed(2)} points` :
+                 `SPY is beating the AI by ${Math.abs(lead).toFixed(2)} points`;
+    $("latest").textContent =
+      `Latest decision (${fmtDate(last.date)}): ${Math.round(last.prob * 100)}% confident SPY would rise, so it ${describe(last.action).sentence}.` +
+      ` ${s.orders} buy/sell order${s.orders === 1 ? "" : "s"} placed across ${rows.length} day${rows.length === 1 ? "" : "s"}.`;
+    $("chartTitle").textContent = `Account value vs. just holding SPY since ${fmtDate(first.date)}`;
+
+    drawChart(rows, s.hold);
+    drawTable(rows);
   }
 
-  function drawChart(botSeries, spySeries) {
-    const svg = document.getElementById("chart");
-    const all = botSeries.concat(spySeries, [0]);
-    let lo = Math.min(...all), hi = Math.max(...all);
-    if (hi - lo < 0.01) { hi += 0.005; lo -= 0.005; }
-    const n = botSeries.length, W = 600, H = 180, pad = 10;
-    const x = i => n === 1 ? W / 2 : (i / (n - 1)) * W;
-    const y = v => pad + (hi - v) / (hi - lo) * (H - 2 * pad);
-    const line = (s, color) => `<polyline points="${s.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke"/>`;
+  function describe(action) {
+    switch (action) {
+      case "BUY":  return { tag: "buy",  label: "BUY",  why: "",           sentence: "bought SPY" };
+      case "SELL": return { tag: "sell", label: "SELL", why: "",           sentence: "sold its SPY" };
+      case "HOLD": return { tag: "",     label: "HOLD", why: "owns SPY",   sentence: "kept holding SPY" };
+      case "CASH": return { tag: "",     label: "HOLD", why: "in cash",    sentence: "stayed in cash" };
+      default:     return { tag: "",     label: action, why: "",           sentence: action.toLowerCase() };
+    }
+  }
+
+  function drawTable(rows) {
+    $("rows").innerHTML = rows.slice().reverse().map(r => {
+      const a = describe(r.action), conf = Math.round(r.prob * 100);
+      return `<tr>
+        <td><span class="long">${fmtDateLong(r.date)}</span><span class="short">${r.date.toLocaleDateString(undefined, { month: "numeric", day: "numeric", year: "2-digit" })}</span></td>
+        <td>${conf}%<span class="bar" aria-hidden="true"><b style="width:${conf}%"></b></span></td>
+        <td><span class="tag ${a.tag}">${a.label}</span>${a.why ? `<span class="why">${a.why}</span>` : ""}</td>
+        <td class="right">$${r.spy.toFixed(2)}</td>
+        <td class="right">${money(r.equity)}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  // ---- Chart ----
+  let chart = null, lastData = null;
+  function drawChart(rows, hold) {
+    lastData = [rows, hold];
+    const msg = $("chartMsg");
+    if (rows.length < 2) {
+      msg.hidden = false;
+      msg.textContent = "The line starts after the next run. It needs at least two days of results.";
+      return;
+    }
+    msg.hidden = true;
+    if (!window.Chart) return;  // CDN blocked: numbers and table still work
     const css = getComputedStyle(document.documentElement);
-    svg.innerHTML =
-      `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="${css.getPropertyValue("--line")}" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>` +
-      line(spySeries, css.getPropertyValue("--gray")) + line(botSeries, css.getPropertyValue("--green"));
+    const v = n => css.getPropertyValue(n).trim();
+    const labels = rows.map(r => fmtDate(r.date));
+    const few = rows.length < 40;
+
+    if (chart) chart.destroy();
+    chart = new Chart($("chart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "AI bot", data: rows.map(r => r.equity), borderColor: v("--ai"), backgroundColor: v("--ai"),
+            borderWidth: 2, pointRadius: few ? 3 : 0, pointHoverRadius: 5, tension: 0.2 },
+          { label: "Just holding SPY", data: hold, borderColor: v("--spy"), backgroundColor: v("--spy"),
+            borderWidth: 2, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 5, tension: 0.2 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },  // HTML legend above the chart
+          tooltip: {
+            callbacks: {
+              title: items => fmtDateLong(rows[items[0].dataIndex].date),
+              label: c => ` ${c.dataset.label}: ${money(c.parsed.y)}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, border: { color: v("--line") },
+               ticks: { color: v("--muted"), maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+          y: { grid: { color: v("--line") }, border: { display: false },
+               ticks: { color: v("--muted"), maxTicksLimit: 6,
+                        callback: x => money(x) } },
+        },
+      },
+    });
   }
+  // Redraw with the right colors if the phone switches between light and dark mode
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => lastData && drawChart(...lastData));
+
+  load().then(rows => {
+    if (rows.length) return render(rows);
+    $("verdict").textContent = "No trades yet";
+    $("latest").textContent = "The first update arrives the next weekday morning.";
+    $("rows").innerHTML = `<tr><td colspan="5" class="empty">No decisions yet.</td></tr>`;
+  });
 </script>
 </body>
 </html>
