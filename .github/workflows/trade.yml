@@ -1,0 +1,45 @@
+name: Daily AI trade
+
+on:
+  schedule:
+    - cron: "0 13 * * 1-5"   # every weekday at 13:00 UTC (7-8 AM Central, before the market opens)
+  workflow_dispatch:          # adds a "Run workflow" button so you can run it any time
+
+permissions:
+  contents: write             # lets the bot save its trade log back to your repo
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Run the AI
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          if [ -z "$ALPACA_API_KEY" ]; then
+            echo "No Alpaca keys set up yet. Add them under Settings > Secrets and variables > Actions."
+            exit 0
+          fi
+          python bot.py trade
+          python bot.py status
+
+      - name: Save trade log
+        run: |
+          if [ -f trade_log.csv ]; then
+            git config user.name "trading-bot"
+            git config user.email "trading-bot@users.noreply.github.com"
+            git add trade_log.csv
+            git commit -m "Trade log $(date +%F)" || echo "No changes"
+            git push
+          fi
