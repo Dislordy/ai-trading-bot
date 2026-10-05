@@ -139,6 +139,14 @@ def trade():
     """Retrain on all data, predict tomorrow, and place a paper trade."""
     trading = TradingClient(API_KEY, SECRET_KEY, paper=True)  # paper=True is hard-coded on purpose
 
+    # Skip weekends and market holidays. Before the opening bell on a trading day is fine:
+    # the order waits and fills when the market opens.
+    clock = trading.get_clock()
+    if not market_trades_today(clock):
+        print(f"\n{datetime.now():%Y-%m-%d %H:%M}  The market is closed today. Skipping, no trade.")
+        send_text("The stock market is closed today, so the AI is taking the day off. No trade.")
+        return
+
     data = make_features(get_prices(SYMBOL)).dropna(subset=FEATURES)
     train = data.dropna(subset=["next_ret"])
     model = build_model().fit(train[FEATURES], train["target"])
@@ -185,8 +193,8 @@ def trade():
         spoken = f"No trade today. Still {'holding ' + SYMBOL if qty > 0 else 'in cash'}."
         print(f"No trade needed ({'holding' if qty > 0 else 'staying in cash'}).")
 
-    if not trading.get_clock().is_open:
-        print("Market is closed right now. Any order will fill when it opens.")
+    if not clock.is_open:
+        print("The market hasn't opened yet. Any order will fill when it opens.")
 
     log_run(prob_up, action, equity, float(latest["close"].iloc[0]))
     print(f"Saved to {LOG_FILE}. Run 'python bot.py status' to see progress.")
@@ -200,6 +208,11 @@ def trade():
         f"Account: ${equity:,.0f} (fake money)\n"
         f"Score since {str(first['date'])[:10]}: AI {bot_return:+.1%} vs. just holding {SYMBOL} {spy_return:+.1%}"
     )
+
+
+def market_trades_today(clock):
+    """True if the market is open now, or opens later today (Alpaca's clock is in New York time)."""
+    return clock.is_open or clock.next_open.date() == clock.timestamp.date()
 
 
 def send_text(message):
