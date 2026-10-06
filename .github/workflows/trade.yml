@@ -4,7 +4,7 @@ on:
   schedule:
     # Every weekday at 14:00 UTC = 9:00 AM Central (daylight time).
     # GitHub only understands UTC, so in winter (CST) this runs at 8:00 AM Central instead.
-    - cron: "0 14 * * 1-5"
+    - cron: "56 14 * * 1-5"
   workflow_dispatch:          # adds a "Run workflow" button so you can run it any time
 
 permissions:
