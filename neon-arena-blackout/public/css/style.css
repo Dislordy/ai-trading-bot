@@ -123,3 +123,43 @@ h1 span{color:var(--pink)}
 @media(max-width:700px){.panel{padding:23px}.topbar{top:8px;left:8px;right:8px}.hudbox{padding:7px 9px;min-width:78px}.hudvalue{font-size:18px}.healthbar{width:100px}.leaderboard{top:85px;right:8px;width:138px;padding:7px}.bottomleft{left:9px;bottom:10px;min-width:0}.ammopips,.reloadbar{width:130px}.bottomright{right:8px;bottom:10px;gap:4px}.ability{min-width:54px;padding:7px 5px}.hint{display:none}#feed{left:9px;top:82px;max-width:48%}}
 @media(pointer:coarse){#mobileControls{display:block}}
 #mobileControls.off{display:none!important}
+
+/* ---------------------------------------------------------------------------
+   Megacity HUD theme: hot red + electric yellow + ice cyan, angled panels,
+   chromatic-split headings and scanline overlays.
+   --------------------------------------------------------------------------- */
+:root{--cyan:#5ef6ff;--pink:#ff3c64;--red:#ff5f56;--yellow:#fcee0a;--panel:rgba(14,4,10,.86);--line:rgba(255,95,86,.38)}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:50;background:repeating-linear-gradient(0deg,rgba(0,0,0,.06) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+.panel{border:1px solid var(--line);border-left:3px solid var(--red);clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px));background:linear-gradient(160deg,rgba(28,6,14,.9),rgba(6,4,12,.92))}
+h1{color:var(--yellow);text-shadow:2px 0 0 rgba(255,60,100,.75),-2px 0 0 rgba(94,246,255,.6),0 0 26px rgba(252,238,10,.25);animation:titleglitch 4s infinite steps(1)}
+h1 span{color:var(--red)}
+@keyframes titleglitch{0%,92%,100%{transform:none;clip-path:none}93%{transform:translateX(3px);clip-path:inset(10% 0 55% 0)}95%{transform:translateX(-4px);clip-path:inset(60% 0 8% 0)}97%{transform:translateX(2px)}}
+.eyebrow{color:var(--red)}
+.chip{border-color:var(--yellow);color:var(--yellow)}
+button{border:1px solid var(--red);background:linear-gradient(120deg,rgba(255,95,86,.16),rgba(94,246,255,.06));clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+button:hover{background:var(--yellow);color:#111;box-shadow:0 0 22px rgba(252,238,10,.35)}
+.field:focus{border-color:var(--yellow)}
+.roomcode{color:var(--yellow);text-shadow:0 0 18px rgba(252,238,10,.4)}
+.hudbox{background:linear-gradient(180deg,rgba(26,4,10,.7),rgba(10,3,8,.45));border:1px solid rgba(255,95,86,.3);border-left:3px solid var(--red)}
+.hudlabel{color:#ff8a80}
+.hudvalue.cyan{color:var(--cyan)}.hudvalue.pink,.pink{color:var(--yellow)}
+.healthbar{height:8px;background:rgba(255,95,86,.12)}
+.healthfill{background:repeating-linear-gradient(90deg,var(--red) 0 9px,transparent 9px 11px)}
+.healthfill.low{background:repeating-linear-gradient(90deg,#ff1f3d 0 9px,transparent 9px 11px);animation:lowhp .6s infinite alternate}
+@keyframes lowhp{to{opacity:.55}}
+.leaderboard{border:1px solid rgba(255,95,86,.25);border-left:3px solid var(--yellow);background:rgba(16,4,10,.6)}
+.leaderboard h3{color:var(--yellow)}
+.rankrow.me{color:var(--cyan)}
+.ammo{color:var(--cyan);text-shadow:0 0 14px rgba(94,246,255,.45)}
+.ammopips i{background:var(--cyan)}
+#reloadFill{background:var(--yellow);box-shadow:0 0 8px var(--yellow)}
+.ability{border:1px solid rgba(255,95,86,.5);background:rgba(16,4,10,.82)}
+.ability b{color:var(--yellow)}
+.ability.ready{border-color:var(--cyan)}
+.crosshair{filter:drop-shadow(0 0 3px rgba(255,95,86,.9))}
+.crosshair i{background:#fff}
+.feeditem{border-left-color:var(--red);background:linear-gradient(90deg,rgba(255,95,86,.18),transparent);color:#ffe0dd}
+.feeditem.info{border-left-color:var(--cyan)}
+.killbanner .pts{color:var(--yellow);text-shadow:0 0 14px rgba(252,238,10,.6)}
+.notice{color:var(--yellow);text-shadow:0 0 12px rgba(252,238,10,.6)}
+.deathscreen h2{color:var(--red);text-shadow:3px 0 0 rgba(94,246,255,.6),-3px 0 0 rgba(255,60,100,.8),0 0 30px rgba(255,95,86,.7)}

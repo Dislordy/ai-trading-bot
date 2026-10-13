@@ -100,6 +100,10 @@
   addSym('barrel', 9, -17, 0.8, 0.8, 1.2);
   addSym('barrel', -24.8, -16, 0.8, 0.8, 1.2);
 
+  // Street vending machines against the north/south walls (front faces into the arena)
+  addSym('vending', -7, -26.95, 1.2, 0.9, 2.1, 0, { dir: [0, 1] });
+  addSym('vending', 18.5, -26.95, 1.2, 0.9, 2.1, 0, { dir: [0, 1] });
+
   // Elevated catwalks along the perimeter with staircases leading up to them
   const CATWALK_Y = 3.05, CATWALK_TOP = 3.3, STEP_RISE = 0.3, STEP_RUN = 0.42;
   function catwalkWithStairs(x0, x1, z0, z1, stairX, stairZ0, stairZ1, stairDir) {

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import * as TX from './textures.js';
+import { addNightCity } from './nightcity.js';
 
 const Sim = window.NeonSim;
 
@@ -232,7 +233,8 @@ export function createWorld(renderer, scene, quality) {
   const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 24), skyMaterial());
   sky.frustumCulled = false; sky.renderOrder = -1000; scene.add(sky);
   scene.background = new THREE.Color(0x02030a);
-  scene.fog = new THREE.FogExp2(0x0b0c18, 0.0165);
+  // magenta-tinted smog, like light pollution scattering through a wet megacity night
+  scene.fog = new THREE.FogExp2(0x150d22, 0.0165);
   updaters.push(t => { sky.material.uniforms.time.value = t; });
 
   // ---------- materials
@@ -713,6 +715,8 @@ export function createWorld(renderer, scene, quality) {
   }
 
   batch.flush(root);
+  const city = addNightCity(root, Q);
+  updaters.push((t, dt) => city.update(t, dt));
   console.info(`[world] built in ${(performance.now() - T0).toFixed(0)} ms`);
 
   return {

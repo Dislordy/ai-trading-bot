@@ -16,16 +16,38 @@ const GradeShader = {
   fragmentShader: `uniform sampler2D tDiffuse; uniform float time, damage, lowHp, aberration, scan, dead; uniform vec2 resolution; varying vec2 vUv;
     float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
     void main(){
-      vec2 c = vUv - 0.5;
+      vec2 uv = vUv;
+      // digital glitch when hurt: horizontal block tearing
+      float slot = floor(time * 24.0);
+      float band = floor(uv.y * 28.0);
+      float tear = step(0.86, h(vec2(band, slot))) * smoothstep(0.15, 0.6, damage);
+      uv.x += (h(vec2(slot, band)) - 0.5) * 0.07 * tear;
+      vec2 c = uv - 0.5;
       float r2 = dot(c, c);
-      float ab = aberration * (1.0 + damage * 6.0) * (0.3 + r2 * 3.0);
+      float ab = aberration * (1.0 + damage * 6.0 + tear * 25.0) * (0.3 + r2 * 3.0);
       vec3 col;
-      col.r = texture2D(tDiffuse, vUv - c * ab * 2.0).r;
-      col.g = texture2D(tDiffuse, vUv).g;
-      col.b = texture2D(tDiffuse, vUv + c * ab * 2.0).b;
-      // cool shadows / warm highlights split-tone
+      col.r = texture2D(tDiffuse, uv - c * ab * 2.0).r;
+      col.g = texture2D(tDiffuse, uv).g;
+      col.b = texture2D(tDiffuse, uv + c * ab * 2.0).b;
+      #ifdef STREAKS
+      // anamorphic lens streaks: bright neon smears horizontally with a cool blue tint
+      // jittered taps (per pixel and per frame) dissolve into a smooth streak instead of ghost copies
+      vec3 st = vec3(0.0);
+      float jit = h(uv * resolution + fract(time * 7.0) * 61.0);
+      for (int i = 0; i < 12; i++) {
+        float d = (float(i) + jit) / 12.0;
+        float o = d * d * 0.16, w = (1.0 - d) * (1.0 - d);
+        st += max(texture2D(tDiffuse, uv + vec2(o, 0.0)).rgb - 2.0, 0.0) * w;
+        st += max(texture2D(tDiffuse, uv - vec2(o, 0.0)).rgb - 2.0, 0.0) * w;
+      }
+      col += min(dot(st, vec3(0.33)), 6.0) * vec3(0.35, 0.6, 1.0) * 0.045;
+      #endif
+      // megacity grade: teal-shadowed blacks, warm sodium highlights, punchier saturation
       float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-      col = mix(col, col * vec3(0.92, 0.98, 1.1), 1.0 - smoothstep(0.0, 0.4, l));
+      col = mix(col, col * vec3(0.85, 1.0, 1.12), 1.0 - smoothstep(0.0, 0.35, l));
+      col = mix(col, col * vec3(1.08, 1.0, 0.86), smoothstep(0.6, 2.0, l));
+      col = max(mix(vec3(l), col, 1.18), 0.0);
+      col += vec3(0.004, 0.006, 0.012) * (1.0 - smoothstep(0.0, 0.08, l));
       // vignette (+ red pulse when hurt / low health)
       float vig = smoothstep(0.85, 0.2, r2 * 2.2);
       col *= mix(0.55, 1.0, vig);
@@ -59,6 +81,7 @@ export function createPost(renderer, scene, camera, vmScene, vmCamera, Q) {
     composer.addPass(bloom);
   }
   const grade = new ShaderPass(GradeShader);
+  if (Q.bloom) { grade.material.defines.STREAKS = ''; grade.material.needsUpdate = true; }
   grade.uniforms.resolution.value.set(size.x, size.y);
   composer.addPass(grade);
   composer.addPass(new OutputPass());

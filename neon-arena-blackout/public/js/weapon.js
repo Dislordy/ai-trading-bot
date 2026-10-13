@@ -117,10 +117,11 @@ export class Weapon {
   }
 
   buildArms() {
-    const sleeve = new THREE.MeshStandardMaterial({ color: 0x323846, roughness: 0.8, metalness: 0.0 });
+    // chrome cyberware forearms: polished metal with glowing seams
+    const sleeve = new THREE.MeshStandardMaterial({ color: 0xc9d2e0, roughness: 0.12, metalness: 1, envMapIntensity: 2.6 });
     const armor = new THREE.MeshStandardMaterial({ color: 0x56637a, roughness: 0.32, metalness: 0.85, envMapIntensity: 2 });
-    const glove = new THREE.MeshStandardMaterial({ color: 0x1c1e24, roughness: 0.7, metalness: 0.1 });
-    const glowStrip = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x00f5ff).multiplyScalar(3) });
+    const glove = new THREE.MeshStandardMaterial({ color: 0x9aa4b6, roughness: 0.2, metalness: 1, envMapIntensity: 2.2 });
+    const glowStrip = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff5f56).multiplyScalar(3) });
     const makeArm = () => {
       const g = new THREE.Group();
       const hand = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.045, 0.09), glove); g.add(hand);
@@ -128,6 +129,12 @@ export class Weapon {
       const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.32, 12), sleeve); fore.rotation.x = Math.PI / 2; fore.position.z = 0.2; g.add(fore);
       const guard = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.03, 0.18), armor); guard.position.set(0, 0.035, 0.16); g.add(guard);
       const strip = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.006, 0.14), glowStrip); strip.position.set(0, 0.052, 0.16); g.add(strip);
+      // panel seams on the chrome forearm
+      for (const [ang, z] of [[0.9, 0.12], [-0.9, 0.22], [2.4, 0.3]]) {
+        const seam = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.09), glowStrip);
+        seam.position.set(Math.sin(ang) * 0.042, Math.cos(ang) * 0.042 - 0.005, z); g.add(seam);
+      }
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.004, 6, 20), glowStrip); ring.position.z = 0.06; g.add(ring);
       g.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
       return g;
     };
