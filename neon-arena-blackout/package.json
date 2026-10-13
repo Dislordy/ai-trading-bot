@@ -1,0 +1,21 @@
+{
+  "name": "neon-arena-blackout",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A browser-based cyberpunk multiplayer FPS with an authoritative server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node test/sim.test.js && node test/server.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1",
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
