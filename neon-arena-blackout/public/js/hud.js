@@ -104,7 +104,7 @@ export class Hud {
     this.set('feed', html, v => { $('feed').innerHTML = v; });
   }
   death(show, by, respawnIn) {
-    this.set('dead', show, v => $('deathScreen').classList.toggle('hidden', !v));
+    this.set('dead', show, v => { $('deathScreen').classList.toggle('hidden', !v); $('gameHud').classList.toggle('dead', v); });
     if (show) {
       this.set('by', by, v => { $('killedBy').innerHTML = v ? `by <b style="color:var(--pink)">${escapeHtml(v)}</b>` : ''; });
       this.set('rin', respawnIn, v => { $('respawnIn').textContent = v > 0 ? `REDEPLOYING IN ${v.toFixed(1)}s` : 'REDEPLOYING…'; });

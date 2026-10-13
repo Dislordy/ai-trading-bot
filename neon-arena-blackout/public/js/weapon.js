@@ -2,6 +2,8 @@
 // aim-down-sights, keyframed reload, muzzle flash and an on-gun ammo display.
 import * as THREE from 'three';
 import * as TX from './textures.js';
+import { buildRifle } from './gunmodel.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const Sim = window.NeonSim;
 
@@ -44,47 +46,27 @@ export class Weapon {
     this.aim = 0; this.equip = 0; this.flash = 0; this.lowerT = 0;
     this.hip = new THREE.Vector3(0.15, -0.17, -0.46);
     this.ads = new THREE.Vector3(0, -this.sightY, -0.3);
-    this.reloadT = -1; this.lastAmmo = -1;
+    this.reloadT = -1; this.lastAmmo = -1; this.inspectT = -1; this.heat = 0;
     this.events = {}; // callbacks for reload sound cues
   }
 
   buildRifle() {
-    const gm = TX.gunMetalMaps(256);
-    const metal = new THREE.MeshStandardMaterial({ map: gm.map, roughnessMap: gm.roughnessMap, metalnessMap: gm.metalnessMap, normalMap: gm.normalMap, roughness: 1, metalness: 1, envMapIntensity: 2.2 });
-    const polymer = new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.55, metalness: 0.05, envMapIntensity: 1.2 });
-    const accent = new THREE.MeshStandardMaterial({ color: 0x55657a, roughness: 0.28, metalness: 0.9, envMapIntensity: 2.4 });
     this.energyMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x00f5ff).multiplyScalar(2.2) });
+    const rifle = buildRifle({ energy: this.energyMat });
     const G = this.gun;
+    G.add(rifle.group);
+    const metal = rifle.mats.metal;
     const box = (w, h, d, m, x, y, z, rx = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.x = rx; G.add(o); return o; };
-    const cyl = (r, l, m, x, y, z, seg = 16) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), m); o.rotation.x = Math.PI / 2; o.position.set(x, y, z); G.add(o); return o; };
-    // receiver & body
-    box(0.07, 0.085, 0.36, metal, 0, 0, -0.05);
-    box(0.074, 0.03, 0.3, accent, 0, -0.045, -0.06);
-    box(0.04, 0.014, 0.32, metal, 0, 0.05, -0.06);
-    for (let i = 0; i < 9; i++) box(0.046, 0.006, 0.012, metal, 0, 0.06, -0.19 + i * 0.03);
-    // handguard with vents and energy channels
-    box(0.066, 0.072, 0.27, polymer, 0, -0.005, -0.35);
-    for (let i = 0; i < 5; i++) for (const s of [-1, 1]) box(0.004, 0.012, 0.03, accent, s * 0.034, 0.012, -0.27 - i * 0.045);
-    for (const s of [-1, 1]) box(0.003, 0.008, 0.22, this.energyMat, s * 0.0345, -0.018, -0.35);
-    // barrel + muzzle brake
-    cyl(0.013, 0.22, metal, 0, 0.008, -0.56);
-    cyl(0.022, 0.07, accent, 0, 0.008, -0.69, 8);
-    for (let i = 0; i < 3; i++) box(0.05, 0.004, 0.008, this.energyMat, 0, 0.008, -0.665 - i * 0.02);
-    this.muzzle = new THREE.Object3D(); this.muzzle.position.set(0, 0.008, -0.74); G.add(this.muzzle);
-    // grip, trigger guard, stock
-    box(0.036, 0.11, 0.05, polymer, 0, -0.085, 0.075, -0.32);
-    box(0.012, 0.035, 0.06, metal, 0, -0.06, 0.0);
-    box(0.05, 0.075, 0.2, polymer, 0, -0.012, 0.25);
-    box(0.054, 0.09, 0.025, accent, 0, -0.016, 0.36);
-    box(0.03, 0.02, 0.15, metal, 0, 0.03, 0.2);
-    // magazine (separate group for the reload animation)
-    this.mag = new THREE.Group(); this.mag.position.set(0, -0.06, -0.12); G.add(this.mag);
-    this.magHome = this.mag.position.clone();
-    const mag = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.15, 0.075), polymer); mag.position.y = -0.07; mag.rotation.x = 0.12; this.mag.add(mag);
-    const cell = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.09, 0.012), this.energyMat); cell.position.set(0, -0.07, 0.01); cell.rotation.x = 0.12; this.mag.add(cell);
-    // charging handle
-    this.handle = box(0.03, 0.012, 0.03, accent, 0.045, 0.03, 0.08);
-    this.handleHome = this.handle.position.clone();
+    this.muzzle = rifle.muzzle; this.mag = rifle.mag; this.magHome = rifle.magHome;
+    this.handle = rifle.handle; this.handleHome = rifle.handleHome; this.coils = rifle.coils; this.cell = rifle.cell;
+    // dangling charm on the sling point: a little neon skull on a chain (simple pendulum)
+    this.charm = new THREE.Group(); rifle.charmPivot.add(this.charm);
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.0012, 0.0012, 0.045, 4), rifle.mats.chrome); chain.position.y = -0.0225; this.charm.add(chain);
+    const skull = new THREE.Group(); skull.position.y = -0.052; this.charm.add(skull);
+    const charmGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff2fb9).multiplyScalar(2.5) });
+    skull.add(new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), charmGlow));
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.006, 0.008), charmGlow); jaw.position.y = -0.008; skull.add(jaw);
+    this.charmAng = new THREE.Vector2(); this.charmVel = new THREE.Vector2(); this.prevRootPos = new THREE.Vector3();
     // holographic sight
     this.sightY = 0.088;
     box(0.008, 0.05, 0.05, metal, -0.026, 0.078, -0.03); box(0.008, 0.05, 0.05, metal, 0.026, 0.078, -0.03);
@@ -103,7 +85,7 @@ export class Weapon {
     this.ammoCanvas = document.createElement('canvas'); this.ammoCanvas.width = 128; this.ammoCanvas.height = 64;
     this.ammoTex = new THREE.CanvasTexture(this.ammoCanvas); this.ammoTex.colorSpace = THREE.SRGBColorSpace;
     const disp = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.03), new THREE.MeshBasicMaterial({ map: this.ammoTex, color: new THREE.Color(2.2, 2.2, 2.2), transparent: true }));
-    disp.position.set(-0.0365, 0.005, -0.08); disp.rotation.y = -Math.PI / 2; G.add(disp);
+    disp.position.set(-0.0362, 0.02, 0.05); disp.rotation.y = -Math.PI / 2; G.add(disp);
     // muzzle flash: crossed planes + front sprite
     const ft = TX.flashSprite(256);
     const fm = new THREE.MeshBasicMaterial({ map: ft, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, color: new THREE.Color(4, 3, 2.2) });
@@ -112,34 +94,56 @@ export class Weapon {
     const front = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), fm); front.position.z = -0.02; this.flashGroup.add(front);
     this.flashFront = front;
     this.flashGroup.visible = false;
-    this.ejectPort = new THREE.Object3D(); this.ejectPort.position.set(0.04, 0.02, -0.02); G.add(this.ejectPort);
+    this.ejectPort = rifle.ejectPort;
     G.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
   }
 
   buildArms() {
-    // chrome cyberware forearms: polished metal with glowing seams
-    const sleeve = new THREE.MeshStandardMaterial({ color: 0xc9d2e0, roughness: 0.12, metalness: 1, envMapIntensity: 2.6 });
-    const armor = new THREE.MeshStandardMaterial({ color: 0x56637a, roughness: 0.32, metalness: 0.85, envMapIntensity: 2 });
-    const glove = new THREE.MeshStandardMaterial({ color: 0x9aa4b6, roughness: 0.2, metalness: 1, envMapIntensity: 2.2 });
+    // Right: chrome cyberware forearm with glowing seams. Left: a battered plate gauntlet over cloth wraps.
+    const chrome = new THREE.MeshStandardMaterial({ color: 0xc9d2e0, roughness: 0.12, metalness: 1, envMapIntensity: 2.6 });
+    const chromeDark = new THREE.MeshStandardMaterial({ color: 0x8a94a6, roughness: 0.2, metalness: 1, envMapIntensity: 2.2 });
     const glowStrip = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff5f56).multiplyScalar(3) });
-    const makeArm = () => {
+    const pm = TX.armorPlateMaps(256, [0.16, 0.16, 0.18]);
+    const plate = new THREE.MeshStandardMaterial({ map: pm.map, normalMap: pm.normalMap, roughnessMap: pm.roughnessMap, metalnessMap: pm.metalnessMap, roughness: 1, metalness: 1, envMapIntensity: 1.6 });
+    const cm = TX.clothMaps(128, [0.11, 0.09, 0.08]);
+    const wrap = new THREE.MeshStandardMaterial({ map: cm.map, normalMap: cm.normalMap, roughness: 0.95, metalness: 0 });
+    const leather = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.7, metalness: 0 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xb8892e, roughness: 0.3, metalness: 1, envMapIntensity: 2 });
+    const mesh = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); return m; };
+    const fingers = (g, mat) => {
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) g.add(mesh(new RoundedBoxGeometry(0.011, 0.012, 0.022, 2, 0.003), mat, -0.018 + i * 0.012, -0.012 - j * 0.014, -0.05 - j * 0.012, 0.5 + j * 0.5));
+      g.add(mesh(new RoundedBoxGeometry(0.012, 0.012, 0.03, 2, 0.003), mat, 0.03, -0.005, -0.03, 0.2, -0.5));
+    };
+    const cyberArm = () => {
       const g = new THREE.Group();
-      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.045, 0.09), glove); g.add(hand);
-      const fingers = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.05), glove); fingers.position.set(0, -0.02, -0.04); fingers.rotation.x = 0.6; g.add(fingers);
-      const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.32, 12), sleeve); fore.rotation.x = Math.PI / 2; fore.position.z = 0.2; g.add(fore);
-      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.03, 0.18), armor); guard.position.set(0, 0.035, 0.16); g.add(guard);
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.006, 0.14), glowStrip); strip.position.set(0, 0.052, 0.16); g.add(strip);
-      // panel seams on the chrome forearm
-      for (const [ang, z] of [[0.9, 0.12], [-0.9, 0.22], [2.4, 0.3]]) {
-        const seam = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.004, 0.09), glowStrip);
-        seam.position.set(Math.sin(ang) * 0.042, Math.cos(ang) * 0.042 - 0.005, z); g.add(seam);
-      }
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.004, 6, 20), glowStrip); ring.position.z = 0.06; g.add(ring);
-      g.traverse(o => { if (o.isMesh) o.frustumCulled = false; });
+      g.add(mesh(new RoundedBoxGeometry(0.055, 0.04, 0.08, 3, 0.012), chromeDark, 0, 0, 0));
+      fingers(g, chrome);
+      g.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.32, 16), chrome, 0, 0, 0.2, Math.PI / 2));
+      g.add(mesh(new RoundedBoxGeometry(0.075, 0.03, 0.18, 2, 0.01), chromeDark, 0, 0.035, 0.16));
+      g.add(mesh(new THREE.BoxGeometry(0.006, 0.006, 0.14), glowStrip, 0, 0.052, 0.16));
+      for (const [ang, z] of [[0.9, 0.12], [-0.9, 0.22], [2.4, 0.3]]) g.add(mesh(new THREE.BoxGeometry(0.004, 0.004, 0.09), glowStrip, Math.sin(ang) * 0.042, Math.cos(ang) * 0.042 - 0.005, z));
+      g.add(mesh(new THREE.TorusGeometry(0.04, 0.004, 6, 20), glowStrip, 0, 0, 0.06));
+      // exposed hydraulic pistons along the underside
+      for (const sx of [-0.018, 0.018]) g.add(mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.2, 6), chrome, sx, -0.04, 0.2, Math.PI / 2));
       return g;
     };
-    this.rightArm = makeArm(); this.rightArm.position.set(0.0, -0.09, 0.08); this.rightArm.rotation.set(0.35, 0.25, 0); this.gun.add(this.rightArm);
-    this.leftArm = makeArm(); this.leftHome = new THREE.Vector3(-0.005, -0.045, -0.36); this.leftArm.position.copy(this.leftHome);
+    const gauntlet = () => {
+      const g = new THREE.Group();
+      g.add(mesh(new RoundedBoxGeometry(0.058, 0.042, 0.08, 3, 0.012), plate, 0, 0, 0));
+      fingers(g, plate);
+      g.add(mesh(new THREE.CylinderGeometry(0.036, 0.044, 0.32, 14), wrap, 0, 0, 0.2, Math.PI / 2));
+      // overlapping lames up the forearm with a gilded edge
+      for (let i = 0; i < 4; i++) {
+        const l = mesh(new RoundedBoxGeometry(0.086 - i * 0.002, 0.034, 0.06, 2, 0.012), plate, 0, 0.022, 0.06 + i * 0.05, -0.08);
+        g.add(l);
+        g.add(mesh(new THREE.BoxGeometry(0.08, 0.004, 0.006), gold, 0, 0.04, 0.032 + i * 0.05));
+      }
+      for (const z of [0.1, 0.24]) g.add(mesh(new THREE.TorusGeometry(0.046, 0.006, 6, 18), leather, 0, 0, z));
+      return g;
+    };
+    const finish = g => { g.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); return g; };
+    this.rightArm = finish(cyberArm()); this.rightArm.position.set(0.0, -0.09, 0.08); this.rightArm.rotation.set(0.35, 0.25, 0); this.gun.add(this.rightArm);
+    this.leftArm = finish(gauntlet()); this.leftHome = new THREE.Vector3(-0.005, -0.045, -0.36); this.leftArm.position.copy(this.leftHome);
     this.leftArm.rotation.set(0.25, -0.55, 0.3); this.leftHomeRot = this.leftArm.rotation.clone(); this.gun.add(this.leftArm);
   }
 
@@ -153,7 +157,7 @@ export class Weapon {
     c.fillText(reloading ? '--' : String(ammo).padStart(2, '0'), 64, 34);
     this.ammoTex.needsUpdate = true;
     const k = reloading ? 0.5 : low ? 1.8 : 2.2;
-    this.energyMat.color.set(low && !reloading ? 0xff3b6b : 0x00f5ff).multiplyScalar(k);
+    this.energyBase = new THREE.Color(low && !reloading ? 0xff3b6b : 0x00f5ff).multiplyScalar(k);
   }
 
   fire(aiming) {
@@ -167,7 +171,11 @@ export class Weapon {
     this.flashGroup.rotation.z = Math.random() * Math.PI;
     this.flashGroup.scale.setScalar(0.8 + Math.random() * 0.5);
     this.flashLight.intensity = 3;
+    this.heat = Math.min(1.5, (this.heat || 0) + 0.45);
+    this.inspectT = -1;
   }
+  /** Weapon inspect (F): turn the rifle over to admire it. */
+  inspect() { if (this.inspectT < 0 && this.reloadT < 0 && this.aim < 0.2) this.inspectT = 0; }
   land(strength) { this.landY.kick(-Math.min(1.5, strength) * 0.6); }
   respawn() { this.equip = 0; }
 
@@ -229,6 +237,38 @@ export class Weapon {
       ry * 0.02 + this.swayX + tiltIn * 0.25,
       rl * 0.01 + bobX * 1.5 + tiltIn * 0.55 - this.dashT * 0.25
     );
+    // inspect animation: keyframed pose offsets, cancelled by aiming, reloading or dying
+    if (this.inspectT >= 0) {
+      if (reloading || s.aiming || !s.alive) this.inspectT = -1;
+      else {
+        this.inspectT += dt / 2.6;
+        const K = [[0, [0, 0, 0, 0, 0, 0]], [0.18, [-0.1, 0.06, 0.1, 0.15, 1.0, 0.45]], [0.48, [-0.1, 0.07, 0.1, 0.2, 1.1, 0.5]],
+          [0.66, [0.0, 0.07, 0.08, 0.1, -0.7, -0.55]], [0.86, [0.0, 0.06, 0.08, 0.05, -0.75, -0.5]], [1, [0, 0, 0, 0, 0, 0]]];
+        const t = Math.min(1, this.inspectT);
+        let i = 0; while (i < K.length - 2 && t > K[i + 1][0]) i++;
+        const k = ease(seg(t, K[i][0], K[i + 1][0])), a = K[i][1], b = K[i + 1][1], v = a.map((x, j) => lerp(x, b[j], k));
+        this.root.position.x += v[0]; this.root.position.y += v[1]; this.root.position.z += v[2];
+        this.root.rotation.x += v[3]; this.root.rotation.y += v[4]; this.root.rotation.z += v[5];
+        if (this.inspectT >= 1) this.inspectT = -1;
+      }
+    }
+    // charm pendulum: hangs "down" in view space and swings with the rifle's motion
+    const vel = this.root.position.clone().sub(this.prevRootPos).divideScalar(Math.max(dt, 1e-3));
+    this.prevRootPos.copy(this.root.position);
+    const n = Math.ceil(dt / 0.004), h = dt / n;
+    for (let j = 0; j < n; j++) {
+      this.charmVel.x += (-60 * Math.sin(this.charmAng.x) - 3 * this.charmVel.x) * h;
+      this.charmVel.y += (-60 * Math.sin(this.charmAng.y) - 3 * this.charmVel.y) * h;
+      this.charmAng.x += this.charmVel.x * h; this.charmAng.y += this.charmVel.y * h;
+    }
+    if (this.lastVel) { this.charmVel.x += (vel.z - this.lastVel.z) * 1.5; this.charmVel.y -= (vel.x - this.lastVel.x) * 1.5; }
+    this.lastVel = vel;
+    this.charm.rotation.set(-this.root.rotation.x + this.charmAng.x, 0, -this.root.rotation.z + this.charmAng.y);
+    // plasma coils run hotter while firing, with a travelling pulse down the barrel
+    this.heat = Math.max(0, this.heat - dt * 1.6);
+    if (this.energyBase) this.energyMat.color.copy(this.energyBase).multiplyScalar(1 + this.heat * 1.4 + Math.sin(performance.now() * 0.004) * 0.08);
+    const tt = performance.now() * 0.012;
+    this.coils.forEach((c, j) => { const p = 1 + Math.max(0, Math.sin(tt - j * 0.9)) * 0.12 * (0.3 + this.heat); c.scale.set(p, p, 1); });
     // muzzle flash decay
     if (this.flash > 0) {
       this.flash -= dt;

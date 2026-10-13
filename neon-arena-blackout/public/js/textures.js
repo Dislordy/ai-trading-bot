@@ -305,6 +305,43 @@ export function gunMetalMaps(size) {
   }, { normalStrength: 1 }));
 }
 
+/** Hammered, battle-worn plate armour: dark iron, scratches, rusted pits, polished edges. */
+export function armorPlateMaps(size, tint = [0.2, 0.2, 0.22]) {
+  return finalize(buildSet(size, (u, v, o) => {
+    const ham = fbm(u, v, 12, 4, 111), fine = fbm(u, v, 64, 3, 112);
+    const scratch = smooth(0.82, 0.9, fbm(u * 6, v * 0.4, 8, 3, 113)) + smooth(0.84, 0.92, fbm(u * 0.4, v * 6, 8, 3, 114));
+    const rust = smooth(0.62, 0.78, fbm(u, v, 6, 5, 115));
+    const dirt = fbm(u, v, 3, 4, 116);
+    let r = tint[0] * (0.8 + ham * 0.5), g = tint[1] * (0.8 + ham * 0.5), b = tint[2] * (0.8 + ham * 0.5);
+    r = mix(r, 0.62, Math.min(1, scratch) * 0.5); g = mix(g, 0.62, Math.min(1, scratch) * 0.5); b = mix(b, 0.64, Math.min(1, scratch) * 0.5);
+    r = mix(r, 0.28, rust * 0.75); g = mix(g, 0.13, rust * 0.75); b = mix(b, 0.06, rust * 0.75);
+    o.r = r * (0.85 + dirt * 0.2); o.g = g * (0.85 + dirt * 0.2); o.b = b * (0.85 + dirt * 0.2);
+    o.h = 0.5 + (ham - 0.5) * 0.6 + (fine - 0.5) * 0.1 - Math.min(1, scratch) * 0.08 - rust * 0.1;
+    o.rough = 0.32 + ham * 0.15 + rust * 0.5 - Math.min(1, scratch) * 0.12;
+    o.metal = mix(0.95, 0.25, rust);
+  }, { normalStrength: 3.5 }));
+}
+
+/** Coarse woven cloth (cloaks, hoods, tabards); with tattered=true the lower edge is torn (alpha). */
+export function clothMaps(size, tint = [0.08, 0.07, 0.08], tattered = false) {
+  return finalize(buildSet(size, (u, v, o) => {
+    const wu = Math.sin(u * size * 2.6) * 0.5 + 0.5, wv = Math.sin(v * size * 2.6) * 0.5 + 0.5;
+    const weave = (((u * size * 0.42) | 0) + ((v * size * 0.42) | 0)) % 2 ? wu : wv;
+    const grime = fbm(u, v, 4, 5, 121), stain = smooth(0.55, 0.8, fbm(u, v, 3, 4, 122));
+    const k = 0.75 + weave * 0.2 + grime * 0.3;
+    o.r = tint[0] * k * (1 - stain * 0.3) + stain * 0.03; o.g = tint[1] * k * (1 - stain * 0.3) + stain * 0.02; o.b = tint[2] * k * (1 - stain * 0.3);
+    o.h = 0.5 + (weave - 0.5) * 0.12 + (grime - 0.5) * 0.25;
+    o.rough = 0.88 + grime * 0.1; o.metal = 0;
+    if (tattered) {
+      // canvas row 0 is the top of the cloth (uv.y = 1); tear the bottom 30% into ragged strips
+      const bottom = v;
+      const tear = 0.7 + fbm(u * 3, 0.5, 8, 4, 123) * 0.32 + Math.sin(u * 40) * 0.015;
+      const holes = smooth(0.7, 0.74, fbm(u, v, 10, 4, 124)) * smooth(0.4, 0.8, bottom);
+      o.a = bottom > tear || holes > 0.5 ? 0 : 1;
+    }
+  }, { normalStrength: 1.5, alpha: tattered }));
+}
+
 /** Soft radial sprite (particles, flares, fog puffs). */
 export function radialSprite(size = 128, inner = 0, falloff = 2.2) {
   const c = canvas(size), ctx = c.getContext('2d');

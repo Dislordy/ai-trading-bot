@@ -84,6 +84,7 @@ document.addEventListener('keydown', e => {
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') dashQueued = true;
   if (e.code === 'KeyQ') ability('shield');
   if (e.code === 'KeyE') ability('scan');
+  if (e.code === 'KeyF' && weapon) weapon.inspect();
   if (e.code === 'Tab') $('scoreboard').classList.remove('hidden');
 });
 document.addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'Tab') $('scoreboard').classList.add('hidden'); });
@@ -260,6 +261,7 @@ socket.on('shot', shot => {
   audio.gunshot(muzzle);
   if (shot.h) {
     const victim = avatars.get(shot.h);
+    if (victim) victim.flinch(dir);
     fx.playerHit(end, dir, victim ? victim.color : 0xffffff, false);
     audio.play('impactBody', { pos: end, volume: 0.7 });
   } else if (shot.n) {
@@ -280,6 +282,7 @@ const impactSound = k => (k === 'floor' ? 'impactWater' : k === 'perimeter' ? 'i
 socket.on('hit', h => {
   const pos = new THREE.Vector3(...h.p);
   const victim = avatars.get(h.id);
+  if (victim && !h.blocked) victim.flinch(new THREE.Vector3().subVectors(pos, cameraEye()).normalize());
   if (h.blocked) { hud.hitmarker('blocked'); hud.damageNumber('IMMUNE', 'shield', pos); return; }
   fx.playerHit(pos, new THREE.Vector3().subVectors(pos, cameraEye()).normalize(), victim ? victim.color : 0xffffff, h.part === 'head');
   hud.hitmarker(h.k ? 'kill' : h.part === 'head' ? 'head' : '');
@@ -340,6 +343,7 @@ function syncAvatars(players) {
   for (const p of players) {
     if (p.id === myId || avatars.has(p.id)) continue;
     const a = new Avatar(p.color, p.name);
+    a.onDissolve = (pos, color) => { fx.embers(pos, color); audio.play('respawn', { pos, volume: 0.5, rate: 0.55 }); };
     a.group.visible = false;
     scene.add(a.group); avatars.set(p.id, a);
   }

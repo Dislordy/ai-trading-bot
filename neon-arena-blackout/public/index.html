@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>NEON ARENA: BLACKOUT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Orbitron:wght@400;600;700;800&family=Rajdhani:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/css/style.css">
 <script type="importmap">
 { "imports": {
@@ -35,7 +35,7 @@
       <label>Mouse sensitivity <input id="sensRange" type="range" min="0.4" max="3" step="0.05"></label>
       <label>Master volume <input id="volRange" type="range" min="0" max="1" step="0.05"></label>
     </details>
-    <p class="small">WASD MOVE · MOUSE AIM · LMB FIRE (HOLD) · RMB AIM · R RELOAD<br>SPACE JUMP · SHIFT DASH · Q SHIELD · E SCAN · TAB SCORES</p>
+    <p class="small">WASD MOVE · MOUSE AIM · LMB FIRE (HOLD) · RMB AIM · R RELOAD<br>SPACE JUMP · SHIFT DASH · Q SHIELD · E SCAN · F INSPECT · TAB SCORES</p>
     <p id="loadStatus" class="small dim"></p>
   </div>
 </div>
@@ -84,7 +84,7 @@
     <button class="ability" id="shieldBtn"><span class="cd"></span><b>Q</b>SHIELD</button>
     <button class="ability" id="scanBtn"><span class="cd"></span><b>E</b>SCAN</button>
   </div>
-  <div id="deathScreen" class="deathscreen hidden"><div class="eyebrow">CONNECTION SEVERED</div><h2>ELIMINATED</h2><p id="killedBy"></p><p id="respawnIn" class="small"></p></div>
+  <div id="deathScreen" class="deathscreen hidden"><div class="deathband"><h2>FLATLINED</h2></div><p id="killedBy"></p><p id="respawnIn" class="small"></p></div>
   <div id="scoreboard" class="scoreboard hidden"><div class="panel wide-panel"><div class="eyebrow">ARENA STANDINGS</div><div id="scoreRows"></div></div></div>
 </div>
 

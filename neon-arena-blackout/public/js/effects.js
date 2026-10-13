@@ -271,16 +271,29 @@ export class Effects {
     for (let i = 0; i < 8; i++) this.sparks.spawn(point.x, point.y, point.z, (dir.x + rnd(1)) * 5, (dir.y + rnd(1)) * 5 + 1, (dir.z + rnd(1)) * 5, 0.3, [c.r, c.g, c.b]);
     this.glow.spawn(point.x, point.y, point.z, 0, 0, 0, { life: 0.15, size: head ? 0.9 : 0.55, endSize: 0.1, color: col });
   }
+  /** Body dissolving into drifting embers and ash (souls-like). */
+  embers(pos, color) {
+    const c = new THREE.Color(color);
+    for (let i = 0; i < 90; i++) {
+      const warm = Math.random() < 0.65;
+      const col = warm ? [2.4, 0.9 + Math.random() * 0.5, 0.25] : [c.r * 2.5, c.g * 2.5, c.b * 2.5];
+      this.glow.spawn(pos.x + rnd(0.45), pos.y + Math.random() * 1.0, pos.z + rnd(0.7), rnd(0.35), 0.5 + Math.random() * 1.2, rnd(0.35),
+        { life: 1.6 + Math.random() * 1.8, size: 0.025 + Math.random() * 0.035, endSize: 0, color: col, drag: 0.6, gravity: -0.25 });
+    }
+    for (let i = 0; i < 6; i++) this.smoke.spawn(pos.x + rnd(0.4), pos.y + Math.random() * 0.6, pos.z + rnd(0.6), rnd(0.2), 0.35, rnd(0.2),
+      { life: 2.6, size: 0.35, endSize: 1.8, alpha: 0.2, color: [0.18, 0.16, 0.16], drag: 0.6, spin: rnd(0.4) });
+    this.glow.spawn(pos.x, pos.y + 0.4, pos.z, 0, 0, 0, { life: 0.5, size: 1.6, endSize: 0.2, color: [1.6, 0.6, 0.2] });
+  }
   death(pos, color) {
     const c = new THREE.Color(color), col = [c.r * 2.5, c.g * 2.5, c.b * 2.5];
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 35; i++) {
       const th = Math.random() * 6.28, ph = Math.random() * 3.14, sp = 2 + Math.random() * 6;
       this.glow.spawn(pos.x, pos.y + 1, pos.z, Math.cos(th) * Math.sin(ph) * sp, Math.cos(ph) * sp + 2, Math.sin(th) * Math.sin(ph) * sp, { life: 0.6 + Math.random() * 0.8, size: 0.09, endSize: 0, color: col, drag: 2, gravity: 4 });
     }
     for (let i = 0; i < 30; i++) this.sparks.spawn(pos.x, pos.y + 1, pos.z, rnd(8), Math.random() * 8, rnd(8), 0.6 + Math.random() * 0.5, [c.r, c.g, c.b]);
     for (let i = 0; i < 8; i++) this.smoke.spawn(pos.x + rnd(0.4), pos.y + 0.4 + Math.random() * 1.2, pos.z + rnd(0.4), rnd(0.6), 0.6, rnd(0.6), { life: 2, size: 0.4, endSize: 2, alpha: 0.25, color: [0.35, 0.36, 0.42], drag: 1, spin: rnd(0.5) });
-    this.glow.spawn(pos.x, pos.y + 1, pos.z, 0, 0, 0, { life: 0.3, size: 3, endSize: 0.5, color: col });
-    this.ring(pos, color, 6, 0.6);
+    this.glow.spawn(pos.x, pos.y + 1, pos.z, 0, 0, 0, { life: 0.25, size: 1.8, endSize: 0.3, color: col });
+    this.ring(pos, color, 4, 0.5);
     this.flashLight(_v.set(pos.x, pos.y + 1, pos.z), color, 60, 0.35);
   }
   ring(pos, color, radius, life) {
