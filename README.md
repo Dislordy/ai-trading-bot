@@ -28,6 +28,12 @@ In your new repository, go to **Settings > Secrets and variables > Actions > New
 | `ALPACA_API_KEY` | your Alpaca key (starts with PK) |
 | `ALPACA_SECRET_KEY` | your Alpaca secret |
 | `NTFY_TOPIC` | your ntfy topic name |
+| `ANTHROPIC_API_KEY` | (optional) a Claude API key from console.anthropic.com, so Claude makes the daily decision |
+
+**How Claude decides:** each morning Claude reads 60 days of SPY data plus the Random Forest's estimate and picks a
+small base position (about 5% of the account) or a big bet (up to $20,000). A big bet gets a stop-loss order so it can
+never lose more than $1,000; the code enforces these limits, not Claude. Without `ANTHROPIC_API_KEY` the bot just keeps
+the 5% base position. The Claude API is billed per use (roughly a few cents per day for one decision).
 
 **5. Turn it on**
 - Go to the **Actions** tab. If asked, tap the button to enable workflows.
