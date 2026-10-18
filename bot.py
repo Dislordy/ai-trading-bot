@@ -8,7 +8,6 @@ Usage:
     python bot.py backtest   -> test the strategy on past data (no trading)
     python bot.py trade      -> make today's prediction and place a paper trade
     python bot.py status     -> see account value, positions and progress vs SPY
-    python bot.py test-text  -> send a test notification to your phone
 """
 
 import csv
@@ -19,7 +18,6 @@ import time
 from datetime import datetime, timedelta
 
 import pandas as pd
-import requests
 from dotenv import load_dotenv
 from sklearn.ensemble import RandomForestClassifier
 
@@ -153,7 +151,6 @@ def trade():
     clock = trading.get_clock()
     if not market_trades_today(clock):
         print(f"\n{datetime.now():%Y-%m-%d %H:%M}  The market is closed today. Skipping, no trade.")
-        send_text("The stock market is closed today, so the AI is taking the day off. No trade.")
         return
 
     # Orders and stop-losses need the market open, so wait for the opening bell if it's close.
@@ -226,13 +223,8 @@ def trade():
     first = log.iloc[0]
     bot_return = equity / first["equity"] - 1
     spy_return = price / first["spy_price"] - 1
-    who = "Claude chose" if plan["decided_by"] == "claude" else "Kept"
-    size = "a big bet" if plan["stance"] == "big" else "the small base amount"
-    send_text(
-        f"{who} {size}: {held:g} shares of {SYMBOL} (~${held * price:,.0f}). {plan['reason']}\n"
-        f"Account: ${equity:,.0f} (fake money)\n"
-        f"Score since {str(first['date'])[:10]}: AI {bot_return:+.1%} vs. just holding {SYMBOL} {spy_return:+.1%}"
-    )
+    print(f"Now holding {held:g} shares of {SYMBOL} (~${held * price:,.0f}). Account: ${equity:,.0f} (fake money)")
+    print(f"Score since {str(first['date'])[:10]}: AI {bot_return:+.1%} vs. just holding {SYMBOL} {spy_return:+.1%}")
 
 
 def current_shares(trading):
@@ -349,23 +341,6 @@ def market_trades_today(clock):
     return clock.is_open or clock.next_open.date() == clock.timestamp.date()
 
 
-def send_text(message):
-    """Send a notification to your phone through the free ntfy app (if NTFY_TOPIC is set in .env)."""
-    topic = os.getenv("NTFY_TOPIC")
-    if not topic:
-        return  # notifications not set up, skip
-    try:
-        requests.post(
-            f"https://ntfy.sh/{topic}",
-            data=message.encode("utf-8"),
-            headers={"Title": "AI Trading Bot daily update", "Tags": "chart_with_upwards_trend"},
-            timeout=10,
-        )
-        print("Notification sent to your phone.")
-    except Exception as e:
-        print(f"Notification failed: {e}")
-
-
 LOG_FILE = "trade_log.csv"
 
 
@@ -436,7 +411,5 @@ if __name__ == "__main__":
         trade()
     elif command == "status":
         status()
-    elif command == "test-text":
-        send_text("Test from your AI trading bot. Notifications are working!")
     else:
-        print("Usage: python bot.py [backtest|trade|status|test-text]")
+        print("Usage: python bot.py [backtest|trade|status]")
