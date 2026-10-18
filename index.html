@@ -56,6 +56,9 @@
   .tag.buy { background:var(--upbg); color:var(--up); }
   .tag.sell { background:var(--downbg); color:var(--down); }
   .why { color:var(--muted); font-size:12px; margin-left:6px; }
+  .plan { display:block; color:var(--muted); font-size:12px; margin-top:2px; white-space:normal; min-width:9em; }
+  tr.reason td { border-top:none; padding-top:0; white-space:normal; color:var(--muted); font-size:13px; }
+  tr.reason td::before { content:"Claude: "; font-weight:600; color:var(--text); }
   .bar { display:inline-block; vertical-align:middle; width:44px; height:6px; border-radius:3px; background:var(--soft); margin-left:8px; overflow:hidden; }
   .bar b { display:block; height:100%; background:var(--ai); border-radius:3px; }
 
@@ -111,10 +114,10 @@
 
   <div class="card">
     <h2>Every decision</h2>
-    <p class="sub">Newest first. Confidence is the model's estimated chance that SPY goes up; it buys above 53%.</p>
+    <p class="sub">Newest first. Each morning Claude decides between a small base position (about 5% of the account) and a big bet (up to $20,000, protected by a stop-loss that caps the loss at $1,000). "RF hint" is the Random Forest's estimated chance that SPY goes up, which Claude sees as one input.</p>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Date</th><th>Confidence</th><th>Decision</th><th class="right">SPY price</th><th class="right">Account</th></tr></thead>
+        <thead><tr><th>Date</th><th>RF hint</th><th>Decision</th><th class="right hide-sm">SPY price</th><th class="right">Account</th></tr></thead>
         <tbody id="rows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
       </table>
     </div>
@@ -122,7 +125,7 @@
 
   <p class="foot">
     Paper trading on Alpaca with $100,000 of simulated money. No real money is involved and nothing here is investment advice.
-    The AI is a Random Forest model trained on SPY's recent momentum, trend, volatility and volume. It puts 10% of the account into SPY when it's more than 53% confident of an up day, and sells otherwise.
+    Claude reads 60 days of SPY prices plus a Random Forest model's estimate, then picks how much SPY to hold. The code enforces the limits: about 5% normally, at most $20,000 on a big bet, and a stop-loss so a big bet can never lose more than $1,000.
     Win rate counts completed buy-then-sell trades, using the SPY price when each decision was made.
   </p>
 </main>
@@ -135,9 +138,7 @@
   const host = location.hostname;
   const owner = host.endsWith(".github.io") ? host.split(".")[0] : null;
   const repo = location.pathname.split("/").filter(Boolean)[0] || (owner ? `${owner}.github.io` : null);
-  const sources = [];
-  if (owner && repo) sources.push(`https://raw.githubusercontent.com/${owner}/${repo}/main/trade_log.csv`);
-  sources.push("trade_log.csv");
+  const sourcesFor = file => (owner && repo ? [`https://raw.githubusercontent.com/${owner}/${repo}/main/${file}`] : []).concat(file);
 
   const STARTING_CASH = 100000;  // the paper account opened with $100,000 of fake money
 
@@ -152,16 +153,54 @@
   const tone = (el, x) => { el.classList.remove("up", "down"); if (x > 0) el.classList.add("up"); if (x < 0) el.classList.add("down"); };
   const sameDay = (a, b) => a.toDateString() === b.toDateString();
 
-  async function load() {
-    for (const url of sources) {
+  async function fetchText(file) {
+    for (const url of sourcesFor(file)) {
       try {
         const r = await fetch(url + "?t=" + Date.now(), { cache: "no-store" });
-        if (!r.ok) continue;
-        const rows = parse(await r.text());
-        if (rows.length) return rows;
+        if (r.ok) return await r.text();
       } catch (e) { /* try the next source */ }
     }
-    return [];
+    return "";
+  }
+
+  async function load() {
+    const [trades, notes] = await Promise.all([fetchText("trade_log.csv"), fetchText("claude_log.csv")]);
+    const plans = {};
+    for (const n of parseCsv(notes)) plans[n.date] = n;
+    return parse(trades).map(r => ({ ...r, plan: plans[r.stamp] }));
+  }
+
+  // Splits CSV text into objects keyed by the header row; handles "quoted, fields".
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else field += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ",") { row.push(field); field = ""; }
+      else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.some(Boolean)) rows.push(row);
+        row = [];
+      } else field += ch;
+    }
+    row.push(field);
+    if (row.some(Boolean)) rows.push(row);
+    const head = (rows.shift() || []).map(h => h.trim());
+    return rows.map(r => Object.fromEntries(head.map((h, i) => [h, (r[i] || "").trim()])));
+  }
+
+  const escapeHtml = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  function planText(p) {
+    if (!p) return "";
+    if (p.stance === "big") return `Big bet: ${p.shares} shares · stop-loss $${(+p.stop_price).toFixed(2)} · max loss ~$${(+p.max_loss).toLocaleString()}`;
+    return `Base: ${p.shares} shares` + (p.decided_by === "fallback" ? " (Claude unavailable)" : "");
   }
 
   function parse(text) {
@@ -171,6 +210,7 @@
     return lines.filter(Boolean).map(line => {
       const c = line.split(",");
       return {
+        stamp: (c[col("date")] || "").trim(),
         date: toDate(c[col("date")]),
         prob: +c[col("prob_up")],
         action: (c[col("action")] || "").trim().toUpperCase(),
@@ -265,9 +305,10 @@
       Math.abs(lead) < 0.05 ? "Dead even with SPY so far" :
       lead > 0 ? `The AI is beating SPY by ${lead.toFixed(2)} points` :
                  `SPY is beating the AI by ${Math.abs(lead).toFixed(2)} points`;
-    $("latest").textContent =
-      `Latest decision (${fmtDate(last.date)}): ${(last.prob * 100).toFixed(1)}% confident SPY would rise, so it ${describe(last.action).sentence}.` +
-      ` ${s.orders} buy/sell order${s.orders === 1 ? "" : "s"} placed across ${rows.length} day${rows.length === 1 ? "" : "s"}.`;
+    $("latest").textContent = last.plan
+      ? `Latest decision (${fmtDate(last.date)}): ${planText(last.plan)}. ${last.plan.reason}`
+      : `Latest decision (${fmtDate(last.date)}): ${(last.prob * 100).toFixed(1)}% confident SPY would rise, so it ${describe(last.action).sentence}.` +
+        ` ${s.orders} buy/sell order${s.orders === 1 ? "" : "s"} placed across ${rows.length} day${rows.length === 1 ? "" : "s"}.`;
     $("chartTitle").textContent = `Account value vs. just holding SPY since ${fmtDate(first.date)}`;
 
     drawChart(rows, s.hold);
@@ -277,7 +318,7 @@
   function describe(action) {
     switch (action) {
       case "BUY":  return { tag: "buy",  label: "BUY",  why: "",           sentence: "bought SPY" };
-      case "SELL": return { tag: "sell", label: "SELL", why: "",           sentence: "sold its SPY" };
+      case "SELL": return { tag: "sell", label: "SELL", why: "",           sentence: "sold SPY" };
       case "HOLD": return { tag: "",     label: "HOLD", why: "owns SPY",   sentence: "kept holding SPY" };
       case "CASH": return { tag: "",     label: "HOLD", why: "in cash",    sentence: "stayed in cash" };
       default:     return { tag: "",     label: action, why: "",           sentence: action.toLowerCase() };
@@ -290,10 +331,10 @@
       return `<tr>
         <td><span class="long">${fmtDateLong(r.date)}</span><span class="short">${r.date.toLocaleDateString(undefined, { month: "numeric", day: "numeric", year: "2-digit" })}</span></td>
         <td>${conf}%<span class="bar" aria-hidden="true"><b style="width:${conf}%"></b></span></td>
-        <td><span class="tag ${a.tag}">${a.label}</span>${a.why ? `<span class="why">${a.why}</span>` : ""}</td>
-        <td class="right">$${r.spy.toFixed(2)}</td>
+        <td><span class="tag ${a.tag}">${a.label}</span>${a.why ? `<span class="why">${a.why}</span>` : ""}${r.plan ? `<span class="plan">${escapeHtml(planText(r.plan))}</span>` : ""}</td>
+        <td class="right hide-sm">$${r.spy.toFixed(2)}</td>
         <td class="right">${money(r.equity)}</td>
-      </tr>`;
+      </tr>` + (r.plan && r.plan.reason ? `<tr class="reason"><td colspan="5">${escapeHtml(r.plan.reason)}</td></tr>` : "");
     }).join("");
   }
 
