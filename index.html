@@ -111,7 +111,7 @@
 
   <div class="card">
     <h2>Every decision</h2>
-    <p class="sub">Newest first. Confidence is the model's estimated chance that SPY goes up; it buys above 55%.</p>
+    <p class="sub">Newest first. Confidence is the model's estimated chance that SPY goes up; it buys above 53%.</p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Date</th><th>Confidence</th><th>Decision</th><th class="right">SPY price</th><th class="right">Account</th></tr></thead>
@@ -122,7 +122,7 @@
 
   <p class="foot">
     Paper trading on Alpaca with $100,000 of simulated money. No real money is involved and nothing here is investment advice.
-    The AI is a Random Forest model trained on SPY's recent momentum, trend, volatility and volume. It puts 10% of the account into SPY when it's more than 55% confident of an up day, and sells otherwise.
+    The AI is a Random Forest model trained on SPY's recent momentum, trend, volatility and volume. It puts 10% of the account into SPY when it's more than 53% confident of an up day, and sells otherwise.
     Win rate counts completed buy-then-sell trades, using the SPY price when each decision was made.
   </p>
 </main>
@@ -266,7 +266,7 @@
       lead > 0 ? `The AI is beating SPY by ${lead.toFixed(2)} points` :
                  `SPY is beating the AI by ${Math.abs(lead).toFixed(2)} points`;
     $("latest").textContent =
-      `Latest decision (${fmtDate(last.date)}): ${Math.round(last.prob * 100)}% confident SPY would rise, so it ${describe(last.action).sentence}.` +
+      `Latest decision (${fmtDate(last.date)}): ${(last.prob * 100).toFixed(1)}% confident SPY would rise, so it ${describe(last.action).sentence}.` +
       ` ${s.orders} buy/sell order${s.orders === 1 ? "" : "s"} placed across ${rows.length} day${rows.length === 1 ? "" : "s"}.`;
     $("chartTitle").textContent = `Account value vs. just holding SPY since ${fmtDate(first.date)}`;
 
@@ -286,7 +286,7 @@
 
   function drawTable(rows) {
     $("rows").innerHTML = rows.slice().reverse().map(r => {
-      const a = describe(r.action), conf = Math.round(r.prob * 100);
+      const a = describe(r.action), conf = (r.prob * 100).toFixed(1);
       return `<tr>
         <td><span class="long">${fmtDateLong(r.date)}</span><span class="short">${r.date.toLocaleDateString(undefined, { month: "numeric", day: "numeric", year: "2-digit" })}</span></td>
         <td>${conf}%<span class="bar" aria-hidden="true"><b style="width:${conf}%"></b></span></td>

@@ -31,7 +31,7 @@ from alpaca.trading.requests import GetOrdersRequest, MarketOrderRequest
 # ---------------- Settings you can tweak ----------------
 SYMBOL = "SPY"          # what to trade (SPY = S&P 500 ETF)
 YEARS_OF_DATA = 8       # how much history to learn from
-BUY_THRESHOLD = 0.55    # only buy if model is >55% confident of an up day
+BUY_THRESHOLD = 0.53    # only buy if model is >53% confident of an up day
 POSITION_PCT = 0.10     # use 10% of account equity per trade
 TRAIN_FRACTION = 0.8    # backtest: train on first 80%, test on last 20%
 # ---------------------------------------------------------
