@@ -181,6 +181,7 @@ def trade():
     prob_up = model.predict_proba(latest[FEATURES])[0, 1]
     print(f"\n{datetime.now():%Y-%m-%d %H:%M}  {SYMBOL}  latest bar: {latest.index[0].date()}  price ${price:,.2f}")
     print(f"Random Forest says chance of an up day: {prob_up:.1%}")
+    write_forecast(data, prob_up)
 
     qty = current_shares(trading)
     equity = float(trading.get_account().equity)
@@ -352,6 +353,7 @@ def market_trades_today(clock):
 
 
 LOG_FILE = "trade_log.csv"
+FORECAST_FILE = "forecast.json"
 
 
 CLAUDE_LOG = "claude_log.csv"
@@ -366,6 +368,22 @@ def log_claude(stamp, plan, held):
             w.writerow(["date", "decided_by", "stance", "shares", "stop_price", "max_loss", "reason"])
         w.writerow([stamp, plan["decided_by"], plan["stance"], f"{held:g}",
                     plan["stop_price"] or "", f"{plan['max_loss']:.0f}", " ".join(plan["reason"].split())])
+
+
+def write_forecast(data, prob_up):
+    """Save recent SPY closes and volatility so the website can draw the 'where it might go' range."""
+    recent = data["close"].tail(60)
+    daily_moves = data["close"].pct_change().dropna().tail(60)
+    forecast = {
+        "made_at": f"{datetime.now():%Y-%m-%d %H:%M}",
+        "symbol": SYMBOL,
+        "prob_up": round(float(prob_up), 4),
+        "daily_volatility": round(float(daily_moves.std()), 6),      # typical size of one day's move
+        "avg_abs_move": round(float(daily_moves.abs().mean()), 6),   # average size, ignoring direction
+        "closes": [[f"{d:%Y-%m-%d}", round(float(c), 2)] for d, c in recent.items()],
+    }
+    with open(FORECAST_FILE, "w") as f:
+        json.dump(forecast, f, indent=1)
 
 
 def log_run(stamp, prob_up, action, equity, price):
