@@ -97,6 +97,47 @@
     table { font-size:13px; }
   }
   .short { display:none; }
+  .nav { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+  .nav a { font-size:13px; font-weight:600; color:var(--text); text-decoration:none; background:var(--card); border:1px solid var(--line); border-radius:99px; padding:5px 12px; }
+  .nav a:hover { border-color:var(--ai); color:var(--ai); }
+  .pills { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; padding:3px 10px; border-radius:99px; background:var(--soft); color:var(--text); }
+  .pill.up { background:var(--upbg); color:var(--up); } .pill.down { background:var(--downbg); color:var(--down); }
+  .pill.warn { background:var(--amberbg); color:var(--amber); }
+  .two { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+  .meter { position:relative; height:10px; border-radius:5px; background:var(--soft); overflow:hidden; margin:6px 0 2px; }
+  .meter b { position:absolute; left:0; top:0; bottom:0; background:var(--ai); border-radius:5px; }
+  .meter i { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text); opacity:.55; }
+  .hbar { display:grid; grid-template-columns:minmax(0,11em) minmax(0,1fr) 4.2em; align-items:center; gap:10px; font-size:13px; margin:6px 0; }
+  .hbar .name { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hbar .val { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+  .hbar .meter { margin:0; }
+  .hbar.best .name { font-weight:650; }
+  .factors { margin:6px 0 0; padding-left:18px; font-size:14px; }
+  .factors li { margin:3px 0; }
+  .label-sm { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:14px 0 4px; }
+  .big { font-size:32px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .minis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:12px; }
+  .minis div { background:var(--soft); border-radius:10px; padding:8px 10px; font-size:12px; color:var(--muted); }
+  .minis b { display:block; font-size:16px; color:var(--text); font-variant-numeric:tabular-nums; }
+  .placeholder { color:var(--muted); font-size:14px; border:1px dashed var(--line); border-radius:8px; padding:16px; text-align:center; }
+  .game { display:flex; flex-wrap:wrap; gap:10px; margin:10px 0; }
+  .game button { font:inherit; font-size:16px; font-weight:650; padding:10px 22px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--text); cursor:pointer; min-width:8em; }
+  .game button.upbtn:hover, .game button.upbtn.on { background:var(--upbg); color:var(--up); border-color:var(--up); }
+  .game button.downbtn:hover, .game button.downbtn.on { background:var(--downbg); color:var(--down); border-color:var(--down); }
+  .game button:disabled { cursor:default; opacity:.8; }
+  .vs { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; text-align:center; background:var(--soft); border-radius:12px; padding:12px; margin-top:8px; }
+  .vs .who { font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .vs .score { font-size:28px; font-weight:650; font-variant-numeric:tabular-nums; }
+  .vs .mid { color:var(--muted); font-weight:600; }
+  .results { font-size:13px; color:var(--muted); margin-top:10px; }
+  .results div { padding:4px 0; border-top:1px solid var(--line); }
+  .chartbox.small { height:220px; }
+  @media (max-width:720px) {
+    .two { grid-template-columns:1fr; }
+    .minis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .hbar { grid-template-columns:minmax(0,9em) minmax(0,1fr) 3.8em; }
+  }
 </style>
 </head>
 <body>
@@ -108,6 +149,10 @@
 
   <h1>Emmanuel's AI trading bot</h1>
   <p class="sub">Can a machine learning model beat just holding the S&amp;P 500? <span id="updated">Updated every weekday morning.</span></p>
+  <nav class="nav" aria-label="Sections">
+    <a href="#briefing">AI briefing</a><a href="#forecast">Forecast</a><a href="#play">You vs. AI</a>
+    <a href="#performance">Performance</a><a href="#report">Report card</a><a href="#decisions">Every decision</a>
+  </nav>
 
   <div class="grid">
     <div class="metric"><div class="label">Account value</div><div class="value" id="equity">–</div><div class="note" id="equityNote">&nbsp;</div></div>
@@ -135,6 +180,12 @@
     <div class="sub" style="margin:4px 0 0" id="latest"></div>
   </div>
 
+  <div class="card" id="briefing">
+    <h2>Today's AI briefing</h2>
+    <p class="sub">What Claude thinks about the market right now, in its own words, plus how the three prediction models voted.</p>
+    <div id="briefBody"><div class="placeholder">Claude's full briefing starts with the next trading run (weekday mornings). Check back after the market opens.</div></div>
+  </div>
+
   <div class="card">
     <h2>How the bot decides, every weekday</h2>
     <ol class="steps">
@@ -145,7 +196,7 @@
     </ol>
   </div>
 
-  <div class="card">
+  <div class="card" id="forecast">
     <h2>Where SPY might go next</h2>
     <p class="sub" id="fcSub">The likely range for SPY's price over about the next two weeks of trading, based on how much it has been moving lately.</p>
     <div class="legend">
@@ -168,14 +219,36 @@
     </details>
   </div>
 
-  <div class="card">
+  <div class="card" id="play">
+    <h2>You vs. the AI</h2>
+    <p class="sub">Think you can call the market better than a machine? Guess whether SPY will be higher or lower at the bot's next run. Your guesses are saved on this device only.</p>
+    <div id="gamePrompt" class="fine" style="margin:0"></div>
+    <div class="game">
+      <button type="button" class="upbtn" id="guessUp">▲ Higher</button>
+      <button type="button" class="downbtn" id="guessDown">▼ Lower</button>
+    </div>
+    <div class="vs">
+      <div><div class="who">You</div><div class="score" id="youScore">0 / 0</div></div>
+      <div class="mid">vs</div>
+      <div><div class="who">The AI</div><div class="score" id="aiScore">0 / 0</div></div>
+    </div>
+    <div class="results" id="gameResults"></div>
+  </div>
+
+  <div class="card" id="performance">
     <h2 id="chartTitle">Account value vs. just holding SPY</h2>
     <p class="sub">What the same starting money would be worth if it had simply bought SPY on day one and held it.</p>
     <div class="legend"><span style="--c:var(--ai)"><i></i>AI bot</span><span style="--c:var(--spy)"><i class="dash"></i>Just holding SPY</span></div>
     <div class="chartbox"><canvas id="chart" role="img" aria-label="Line chart of the AI bot's account value compared with just holding SPY"></canvas><div class="chartmsg" id="chartMsg" hidden></div></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="report">
+    <h2>AI report card</h2>
+    <p class="sub">The honest test. The models are trained only on the past and then graded on months they never saw, repeated across several years ("walk-forward testing"). This is how professionals check that a trading model isn't just memorizing history.</p>
+    <div id="reportBody"><div class="placeholder">The report card is created on the next trading run. Check back after the market opens.</div></div>
+  </div>
+
+  <div class="card" id="decisions">
     <h2>Every decision</h2>
     <p class="sub">Newest first. Each morning Claude decides between a small base position (about 5% of the account) and a big bet (up to $20,000, protected by a stop-loss that caps the loss at $1,000). "RF hint" is the Random Forest's estimated chance that SPY goes up, which Claude sees as one input. Above 50% means it leans up, below 50% means it leans down.
       <b>BUY</b> = added SPY shares, <b>SELL</b> = sold shares, <b>HOLD</b> = kept the position the same. Under each decision is Claude's own explanation.</p>
@@ -611,11 +684,190 @@
     });
   }
 
+
+  // ---- Extra data files written by the bot (each is optional) ----
+  async function fetchJson(file) {
+    try { const t = await fetchText(file); return t ? JSON.parse(t) : null; } catch (e) { return null; }
+  }
+  const pct0 = x => Math.round(x * 100) + "%";
+  const pct1 = x => (x * 100).toFixed(1) + "%";
+  const REGIMES = {
+    uptrend: { label: "Uptrend", cls: "up", text: "Prices have been climbing steadily." },
+    downtrend: { label: "Downtrend", cls: "down", text: "Prices have been sliding." },
+    choppy: { label: "Choppy", cls: "", text: "Going sideways with no clear direction." },
+    high_volatility: { label: "Jumpy", cls: "warn", text: "Big swings in both directions. Riskier than usual." },
+  };
+  const meter = (x, mark) => `<div class="meter"><b style="width:${Math.max(0, Math.min(100, x * 100)).toFixed(1)}%"></b>` +
+    (mark != null ? `<i style="left:${(mark * 100).toFixed(1)}%"></i>` : "") + `</div>`;
+
+  // ---- Today's AI briefing ----
+  function renderBriefing(ins) {
+    if (!ins || !ins.latest) return;
+    const L = ins.latest, m = L.market || {}, reg = REGIMES[L.regime];
+    const conf = L.confidence ? `<span class="pill">${escapeHtml(L.confidence)} confidence</span>` : "";
+    const stance = L.stance === "big"
+      ? `<span class="pill up">Big bet: ${L.shares} shares</span>` : `<span class="pill">Small base position: ${L.shares} shares</span>`;
+    const votes = L.votes ? Object.entries(L.votes).map(([k, v]) =>
+      `<div class="hbar"><span class="name">${{ rf: "Random Forest", gb: "Gradient Boosting", lr: "Logistic Regression" }[k] || k}</span>${meter(v, 0.5)}<span class="val">${pct1(v)}</span></div>`).join("") : "";
+    const rsi = m.rsi, rsiWord = rsi == null ? "" : rsi > 70 ? "overbought (ran up fast)" : rsi < 30 ? "oversold (sold off hard)" : "neutral";
+    const volWord = m.volatility_percentile == null ? "" : m.volatility_percentile > 0.8 ? "jumpier than most of the past year"
+      : m.volatility_percentile < 0.2 ? "calmer than most of the past year" : "about normal";
+    $("briefBody").innerHTML = `
+      <div class="pills">${reg ? `<span class="pill ${reg.cls}">${reg.label} market</span>` : ""}${conf}${stance}</div>
+      <p style="margin:0 0 4px;font-size:15px">${escapeHtml(L.reason || "")}</p>
+      ${reg ? `<p class="fine" style="margin:0">${reg.label}: ${reg.text}</p>` : ""}
+      <div class="two">
+        <div>
+          ${L.odds_up_5d != null ? `<div class="label-sm">Claude's odds SPY is higher in 5 trading days</div>
+            <div class="big">${Math.round(L.odds_up_5d)}%</div>${meter(L.odds_up_5d / 100, 0.5)}
+            <div class="fine" style="margin:2px 0 0">The line marks 50%, a coin flip.</div>` : ""}
+          ${L.key_factors && L.key_factors.length ? `<div class="label-sm">What mattered most today</div>
+            <ul class="factors">${L.key_factors.map(f => `<li>${escapeHtml(f)}</li>`).join("")}</ul>` : ""}
+          ${L.watch_for ? `<div class="label-sm">What would change its mind</div><p style="margin:0;font-size:14px">${escapeHtml(L.watch_for)}</p>` : ""}
+        </div>
+        <div>
+          <div class="label-sm">How the three models voted (chance of an up day)</div>
+          ${votes}
+          <div class="hbar best"><span class="name">Team vote</span>${meter(L.model_prob_up, 0.5)}<span class="val">${pct1(L.model_prob_up)}</span></div>
+          <p class="fine">Three different kinds of model each give their odds, and the bot averages them. When they disagree, the signal is weak.</p>
+        </div>
+      </div>
+      ${m.close ? `<div class="minis">
+        <div>RSI<b>${rsi}</b>${rsiWord}</div>
+        <div>vs 200-day average<b>${pct(m.vs_200d_avg, 1)}</b>${m.vs_200d_avg >= 0 ? "above the long-term trend" : "below the long-term trend"}</div>
+        <div>From 1-year high<b>${pct(m.from_1y_high, 1)}</b>${m.from_1y_high > -0.02 ? "near the top" : "below its peak"}</div>
+        <div>Volatility<b>${pct0(m.annual_volatility)}/yr</b>${volWord}</div>
+      </div>` : ""}
+      <p class="fine">Briefing from ${escapeHtml(L.date)} UTC${L.decided_by === "fallback" ? " (Claude was unavailable, so the bot used its default)" : ""}.</p>`;
+  }
+
+  // ---- AI report card ----
+  let curveChart = null, reportData = null;
+  function renderReport(r) {
+    if (!r || !r.models) return;
+    reportData = r;
+    const team = r.models.ensemble, base = r.always_up_accuracy, edge = (team.accuracy - base) * 100;
+    const verdict = edge > 1 ? `That's a small real edge of ${edge.toFixed(1)} points.`
+      : edge > -1 ? "That's about the same as always guessing \"up\", so treat its hints as weak."
+      : `That's ${Math.abs(edge).toFixed(1)} points worse than always guessing "up", so its hints are mostly noise.`;
+    const lo = 0.4, hi = 0.65, scale = x => (x - lo) / (hi - lo);
+    const rows = ["ensemble", "rf", "gb", "lr"].filter(k => r.models[k]).map(k => {
+      const m = r.models[k];
+      return `<div class="hbar ${k === "ensemble" ? "best" : ""}"><span class="name">${escapeHtml(m.name)}</span>${meter(scale(m.accuracy), scale(base))}<span class="val">${pct1(m.accuracy)}</span></div>`;
+    }).join("");
+    const cal = (r.calibration || []).map(c =>
+      `<div class="hbar"><span class="name">Said ${escapeHtml(c.bucket)}</span>${meter(c.actual, c.predicted)}<span class="val">${pct0(c.actual)}</span></div>`).join("");
+    const maxW = Math.max(...r.importance.map(i => i.weight));
+    const sig = r.importance.slice(0, 8).map(i =>
+      `<div class="hbar"><span class="name" title="${escapeHtml(i.name)}">${escapeHtml(i.name)}</span>${meter(i.weight / maxW)}<span class="val">${pct0(i.weight)}</span></div>`).join("");
+
+    $("reportBody").innerHTML = `
+      <div class="two">
+        <div>
+          <div class="label-sm">Right on unseen days</div>
+          <div class="big">${pct1(team.accuracy)}</div>
+          <p style="margin:4px 0 0;font-size:14px">Over ${r.test_days} trading days (${fmtDateLong(new Date(r.tested_from + "T12:00"))} to ${fmtDateLong(new Date(r.tested_to + "T12:00"))}), the team vote called the direction right ${pct1(team.accuracy)} of the time.
+            Always guessing "up" would have scored ${pct1(base)}. ${verdict}</p>
+          <p class="fine">Last 60 days: ${pct1(r.recent_60_accuracy)}. Professional quants are thrilled with 52-53% on daily calls. The market is mostly noise.</p>
+        </div>
+        <div>
+          <div class="label-sm">Each model's accuracy (line = always guessing "up")</div>
+          ${rows}
+          <p class="fine">Bars are scaled from 40% to 65% so small differences are visible.</p>
+        </div>
+      </div>
+      <div class="two">
+        <div>
+          <div class="label-sm">Can you trust its percentages?</div>
+          ${cal}
+          <p class="fine">Bar = how often SPY really rose; line = what the model predicted. When bars land near their lines, the model's percentages mean what they say ("well calibrated").</p>
+        </div>
+        <div>
+          <div class="label-sm">What the models pay attention to</div>
+          ${sig}
+          <p class="fine">Share of the Random Forest's decisions driven by each signal.</p>
+        </div>
+      </div>
+      <div class="label-sm">If it had traded on its own lean (in SPY only on "up" days)</div>
+      <div class="legend"><span style="--c:var(--ai)"><i></i>Follow the models: ${pct(r.strategy_return, 1)}</span><span style="--c:var(--spy)"><i class="dash"></i>Just hold SPY: ${pct(r.buy_hold_return, 1)}</span></div>
+      <div class="chartbox small"><canvas id="curveChart" role="img" aria-label="Growth of $1 following the models versus holding SPY during the test period"></canvas></div>
+      <p class="fine">Growth of $1 during the test period, before trading costs. In the market ${pct0(r.days_in_market)} of days. Graded ${escapeHtml(r.made_at)} UTC.</p>`;
+    drawCurve(r);
+  }
+
+  function drawCurve(r) {
+    if (!window.Chart || !r.curve || r.curve.length < 2) return;
+    const css = getComputedStyle(document.documentElement), v = name => css.getPropertyValue(name).trim();
+    const labels = r.curve.map(c => new Date(c[0] + "T12:00"));
+    if (curveChart) curveChart.destroy();
+    curveChart = new Chart($("curveChart"), {
+      type: "line",
+      data: { labels, datasets: [
+        { label: "Follow the models", data: r.curve.map(c => c[1]), borderColor: v("--ai"), backgroundColor: v("--ai"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.2 },
+        { label: "Just hold SPY", data: r.curve.map(c => c[2]), borderColor: v("--spy"), backgroundColor: v("--spy"), borderWidth: 2, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 4, tension: 0.2 },
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false }, tooltip: { callbacks: {
+          title: items => fmtDateLong(labels[items[0].dataIndex]),
+          label: c => ` ${c.dataset.label}: $1 → $${c.parsed.y.toFixed(3)}` } } },
+        scales: {
+          x: { grid: { display: false }, border: { color: v("--line") }, ticks: { color: v("--muted"), maxRotation: 0, autoSkip: true, maxTicksLimit: 5, callback: (_, i) => labels[i].toLocaleDateString(undefined, { month: "short", year: "2-digit" }) } },
+          y: { grid: { color: v("--line") }, border: { display: false }, ticks: { color: v("--muted"), maxTicksLimit: 5, callback: x => "$" + x.toFixed(2) } },
+        },
+      },
+    });
+  }
+
+  // ---- You vs. the AI ----
+  const GAME_KEY = "aitb-guesses-v1";
+  function loadGuesses() { try { return JSON.parse(localStorage.getItem(GAME_KEY) || "[]"); } catch (e) { return []; } }
+  function saveGuesses(g) { try { localStorage.setItem(GAME_KEY, JSON.stringify(g)); } catch (e) { /* private mode: still playable this visit */ } }
+  let guesses = loadGuesses();
+
+  function setupGame(rows) {
+    const last = rows[rows.length - 1];
+    const byStamp = new Map(rows.map((r, i) => [r.stamp, i]));
+    const resolve = g => {
+      const i = byStamp.get(g.stamp);
+      if (i == null || i + 1 >= rows.length) return null;
+      const next = rows[i + 1], went = next.spy > rows[i].spy ? "up" : next.spy < rows[i].spy ? "down" : "flat";
+      return { went, next, you: g.guess === went, ai: (rows[i].prob > 0.5 ? "up" : "down") === went };
+    };
+    function draw() {
+      const current = guesses.find(g => g.stamp === last.stamp);
+      $("guessUp").classList.toggle("on", current?.guess === "up");
+      $("guessDown").classList.toggle("on", current?.guess === "down");
+      $("guessUp").disabled = $("guessDown").disabled = !!current;
+      $("gamePrompt").textContent = current
+        ? `You picked ${current.guess === "up" ? "HIGHER" : "LOWER"} from $${last.spy.toFixed(2)} (${fmtDate(last.date)}). The AI leaned ${last.prob > 0.5 ? "higher" : "lower"} (${pct1(last.prob)}). Results come in after the next run.`
+        : `SPY was $${last.spy.toFixed(2)} at the last run (${fmtDate(last.date)}). Will it be higher or lower at the next one? The AI's lean stays hidden until you pick.`;
+      const done = guesses.map(g => ({ g, r: resolve(g) })).filter(x => x.r);
+      const you = done.filter(x => x.r.you).length, ai = done.filter(x => x.r.ai).length;
+      $("youScore").textContent = `${you} / ${done.length}`;
+      $("aiScore").textContent = `${ai} / ${done.length}`;
+      $("gameResults").innerHTML = done.length
+        ? done.slice(-6).reverse().map(({ g, r }) =>
+            `<div>${fmtDate(new Date(g.stamp.replace(" ", "T")))}: SPY went ${r.went} ($${r.next.spy.toFixed(2)}). You ${r.you ? "✓" : "✗"} · AI ${r.ai ? "✓" : "✗"}</div>`).join("")
+        : "No results yet. Make a pick and check back after the next run.";
+    }
+    const pick = guess => { if (!guesses.some(g => g.stamp === last.stamp)) { guesses.push({ stamp: last.stamp, guess, at: Date.now() }); guesses = guesses.slice(-200); saveGuesses(guesses); } draw(); };
+    $("guessUp").onclick = () => pick("up");
+    $("guessDown").onclick = () => pick("down");
+    draw();
+  }
+
   // Redraw with the right colors if the phone switches between light and dark mode
-  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { lastData && drawChart(...lastData); fcData && drawForecast(...fcData); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { lastData && drawChart(...lastData); fcData && drawForecast(...fcData); reportData && drawCurve(reportData); });
 
   load().then(rows => {
-    if (rows.length) { render(rows); return loadForecast(rows).then(f => drawForecast(f, rows)); }
+    if (rows.length) {
+      render(rows);
+      setupGame(rows);
+      fetchJson("insights.json").then(renderBriefing);
+      fetchJson("model_report.json").then(renderReport);
+      return loadForecast(rows).then(f => drawForecast(f, rows));
+    }
     $("verdict").textContent = "No trades yet";
     $("latest").textContent = "The first update arrives the next weekday morning.";
     $("rows").innerHTML = `<tr><td colspan="5" class="empty">No decisions yet.</td></tr>`;

@@ -51,9 +51,10 @@ jobs:
       - name: Save trade log
         run: |
           LOGS="trade_log.csv claude_log.csv"
+          SNAPSHOTS="forecast.json model_report.json insights.json"
           mkdir -p "$RUNNER_TEMP/new"
           for f in $LOGS; do [ -f "$f" ] && cp "$f" "$RUNNER_TEMP/new/$f"; done
-          [ -f forecast.json ] && cp forecast.json "$RUNNER_TEMP/new/forecast.json"
+          for f in $SNAPSHOTS; do if [ -f "$f" ]; then cp "$f" "$RUNNER_TEMP/new/$f"; fi; done
           git config user.name "trading-bot"
           git config user.email "trading-bot@users.noreply.github.com"
           # Add only this run's new rows on top of the newest logs on GitHub, so two runs never clash.
@@ -69,11 +70,12 @@ jobs:
               fi
               git add "$f"
             done
-            # The forecast is a snapshot, so the newest one simply replaces the old one.
-            if [ -f "$RUNNER_TEMP/new/forecast.json" ]; then
-              cp "$RUNNER_TEMP/new/forecast.json" forecast.json
-              git add forecast.json
-            fi
+            # Snapshots (forecast, report card, Claude's briefing): the newest simply replaces the old one.
+            for f in $SNAPSHOTS; do
+              [ -f "$RUNNER_TEMP/new/$f" ] || continue
+              cp "$RUNNER_TEMP/new/$f" "$f"
+              git add "$f"
+            done
             if git diff --cached --quiet; then
               echo "Nothing new to save (market closed?)."
               exit 0
