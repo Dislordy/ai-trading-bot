@@ -2,9 +2,12 @@ name: Daily AI trade
 
 on:
   schedule:
-    # Every weekday at 14:00 UTC = 9:00 AM Central (daylight time).
-    # GitHub only understands UTC, so in winter (CST) this runs at 8:00 AM Central instead.
-    - cron: "0 14 * * 1-5"
+    # GitHub often starts scheduled runs hours late (since mid-November they were landing after
+    # the 3 PM Central close, so every run skipped). So we try six times during market hours,
+    # at :37 past the hour because the top of the hour is GitHub's busiest time.
+    # The bot only trades once per day; the extra runs just exit. Times are UTC
+    # (14:37 UTC = 8:37 AM Central in winter, 9:37 AM in summer).
+    - cron: "37 14-19 * * 1-5"
   workflow_dispatch:          # adds a "Run workflow" button so you can run it any time
 
 permissions:

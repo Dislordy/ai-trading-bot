@@ -150,7 +150,17 @@ def trade():
     # Skip weekends and market holidays.
     clock = trading.get_clock()
     if not market_trades_today(clock):
-        print(f"\n{datetime.now():%Y-%m-%d %H:%M}  The market is closed today. Skipping, no trade.")
+        if clock.timestamp.weekday() < 5 and clock.next_open.date() > clock.timestamp.date() and clock.timestamp.hour >= 16:
+            print(f"\n{datetime.now():%Y-%m-%d %H:%M}  The market already closed for the day (this run started too late). "
+                  "Skipping, no trade.")
+        else:
+            print(f"\n{datetime.now():%Y-%m-%d %H:%M}  The market is closed today. Skipping, no trade.")
+        return
+
+    # The workflow is scheduled several times a day in case GitHub starts it late, so only trade once per day.
+    today = f"{clock.timestamp:%Y-%m-%d}"
+    if os.path.exists(LOG_FILE) and any(str(d).startswith(today) for d in pd.read_csv(LOG_FILE)["date"]):
+        print(f"\nAlready traded today ({today}). Nothing to do.")
         return
 
     # Orders and stop-losses need the market open, so wait for the opening bell if it's close.
