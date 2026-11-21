@@ -10,12 +10,14 @@
     --bg:#f7f6f2; --card:#fcfcfb; --soft:#f1efe8; --text:#1f1e1c; --muted:#5f5e59; --line:#e3e1d9;
     --ai:#2a78d6; --spy:#8a8984;
     --up:#0f6e56; --upbg:#e1f5ee; --down:#a32d2d; --downbg:#fbe9e9; --amber:#854f0b; --amberbg:#faeeda;
+    --band50:rgba(42,120,214,.30); --band90:rgba(42,120,214,.13);
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg:#121211; --card:#1a1a19; --soft:#232322; --text:#f1efe8; --muted:#b0aea6; --line:#33332f;
       --ai:#3987e5; --spy:#8f8d86;
       --up:#5dcaa5; --upbg:#0b3a2f; --down:#f09595; --downbg:#3d1717; --amber:#fac775; --amberbg:#412402;
+      --band50:rgba(57,135,229,.38); --band90:rgba(57,135,229,.16);
     }
   }
   * { box-sizing:border-box; }
@@ -62,6 +64,20 @@
   .bar { display:inline-block; vertical-align:middle; width:44px; height:6px; border-radius:3px; background:var(--soft); margin-left:8px; overflow:hidden; }
   .bar b { display:block; height:100%; background:var(--ai); border-radius:3px; }
 
+  .steps { list-style:none; margin:8px 0 0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; counter-reset:step; }
+  .steps li { background:var(--soft); border-radius:10px; padding:10px 12px; font-size:13px; color:var(--muted); counter-increment:step; }
+  .steps li b { display:block; color:var(--text); font-size:14px; margin-bottom:2px; }
+  .steps li b::before { content:counter(step) ". "; color:var(--ai); }
+  details.explain { margin:0 0 12px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; }
+  details.explain summary { cursor:pointer; font-weight:600; font-size:14px; }
+  details.explain dl { margin:10px 0 0; font-size:13px; }
+  details.explain dt { font-weight:600; margin-top:8px; }
+  details.explain dd { margin:2px 0 0; color:var(--muted); }
+  .legend i.band { height:10px; border:none; border-radius:2px; background:var(--c); }
+  .range { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:12px 0 0; }
+  .range div { background:var(--soft); border-radius:10px; padding:10px 12px; font-size:13px; color:var(--muted); }
+  .range b { display:block; color:var(--text); font-size:17px; font-variant-numeric:tabular-nums; }
+  .fine { font-size:13px; color:var(--muted); margin:10px 0 0; }
   .empty { text-align:center; padding:32px 16px; color:var(--muted); }
   .foot { font-size:12px; color:var(--muted); margin-top:20px; }
 
@@ -70,6 +86,8 @@
     .metric .value { font-size:21px; }
     .chartbox { height:240px; }
     h1 { font-size:22px; }
+    .steps { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .range { grid-template-columns:1fr; }
   }
   @media (max-width:520px) {
     .hide-sm { display:none; }
@@ -100,9 +118,54 @@
     <div class="metric"><div class="label">Biggest drop from a peak</div><div class="value" id="dd">–</div><div class="note" id="ddNote">&nbsp;</div></div>
   </div>
 
+  <details class="explain">
+    <summary>What do these numbers mean?</summary>
+    <dl>
+      <dt>Account value</dt><dd>Everything the paper account is worth right now: cash plus the current value of any SPY shares. It started at $100,000 of fake money.</dd>
+      <dt>Total profit/loss</dt><dd>How much the account has gained or lost since the very first run, in dollars and as a percentage.</dd>
+      <dt>Today / profit/loss on a date</dt><dd>The change since the run before. Because the bot holds only a small slice of SPY most days, these moves are usually tiny.</dd>
+      <dt>Just holding SPY</dt><dd>The benchmark. What $100,000 would be worth if it had bought SPY (an index fund that tracks the 500 biggest US companies) on day one and never touched it. The bot "wins" only if it beats this.</dd>
+      <dt>Win rate</dt><dd>Out of the trades that are finished (bought, then later sold), how many made money. Trades still open don't count yet.</dd>
+      <dt>Biggest drop from a peak</dt><dd>Also called "max drawdown". The worst fall from a high point to a later low. It shows how painful the bumpiest stretch was.</dd>
+    </dl>
+  </details>
+
   <div class="card">
     <div class="verdict" id="verdict">Loading…</div>
     <div class="sub" style="margin:4px 0 0" id="latest"></div>
+  </div>
+
+  <div class="card">
+    <h2>How the bot decides, every weekday</h2>
+    <ol class="steps">
+      <li><b>Download prices</b>Gets years of daily SPY prices and trading volume from Alpaca.</li>
+      <li><b>Random Forest guess</b>A machine learning model, trained on past patterns (momentum, trends, volatility), estimates the chance SPY goes up tomorrow.</li>
+      <li><b>Claude decides</b>Claude reads the last 60 days plus that estimate, and picks a small base position or a bigger bet. It explains why in plain English.</li>
+      <li><b>Code enforces limits</b>The bot places the order on the paper account. Big bets get an automatic stop-loss, so one bet can never lose more than $1,000.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Where SPY might go next</h2>
+    <p class="sub" id="fcSub">The likely range for SPY's price over about the next two weeks of trading, based on how much it has been moving lately.</p>
+    <div class="legend">
+      <span style="--c:var(--spy)"><i></i>SPY price (actual)</span>
+      <span style="--c:var(--ai)"><i class="dash"></i>Middle estimate</span>
+      <span style="--c:var(--band50)"><i class="band"></i>Likely range (50% chance)</span>
+      <span style="--c:var(--band90)"><i class="band"></i>Wide range (90% chance)</span>
+    </div>
+    <div class="chartbox"><canvas id="fcChart" role="img" aria-label="SPY price over recent days with a shaded forecast range for the next two weeks"></canvas><div class="chartmsg" id="fcMsg" hidden></div></div>
+    <div class="range" id="fcRange"></div>
+    <p class="fine" id="fcHow"></p>
+    <details class="explain" style="margin:10px 0 0">
+      <summary>How is this range worked out?</summary>
+      <dl>
+        <dt>The width comes from volatility</dt><dd>The bot measures how big SPY's daily moves have been over the last 60 trading days. When the market is jumpy, the range is wide. When it's calm, the range is narrow. The range widens the further ahead you look, because uncertainty adds up day after day.</dd>
+        <dt>The tilt comes from the AI</dt><dd>The Random Forest only predicts one day ahead. If it leans up, the middle line is nudged up by about one typical day's move times how confident it is. Near 50% means no tilt at all.</dd>
+        <dt>Why it's a range, not a line</dt><dd>Nobody can predict exact prices. About half the time SPY should end up inside the darker band, and about 9 times in 10 inside the lighter band. Big news can still push it outside.</dd>
+        <dt>Honest scorecard</dt><dd id="fcScore">Calculating how often the AI's up/down lean has been right…</dd>
+      </dl>
+    </details>
   </div>
 
   <div class="card">
@@ -114,7 +177,8 @@
 
   <div class="card">
     <h2>Every decision</h2>
-    <p class="sub">Newest first. Each morning Claude decides between a small base position (about 5% of the account) and a big bet (up to $20,000, protected by a stop-loss that caps the loss at $1,000). "RF hint" is the Random Forest's estimated chance that SPY goes up, which Claude sees as one input.</p>
+    <p class="sub">Newest first. Each morning Claude decides between a small base position (about 5% of the account) and a big bet (up to $20,000, protected by a stop-loss that caps the loss at $1,000). "RF hint" is the Random Forest's estimated chance that SPY goes up, which Claude sees as one input. Above 50% means it leans up, below 50% means it leans down.
+      <b>BUY</b> = added SPY shares, <b>SELL</b> = sold shares, <b>HOLD</b> = kept the position the same. Under each decision is Claude's own explanation.</p>
     <div class="tablewrap">
       <table>
         <thead><tr><th>Date</th><th>RF hint</th><th>Decision</th><th class="right hide-sm">SPY price</th><th class="right">Account</th></tr></thead>
@@ -390,11 +454,168 @@
       },
     });
   }
+
+  // ---- Forecast: where SPY might go next ----
+  // Uses forecast.json (written by the bot each trading day: 60 daily closes + volatility).
+  // If it isn't there yet, estimates the same things from the SPY prices in the trade log.
+  const HORIZON = 10;                       // trading days ahead (about two weeks)
+  const Z50 = 0.674, Z90 = 1.645;           // normal-curve widths for 50% and 90% ranges
+
+  function nextWeekdays(from, n) {
+    const out = [], d = new Date(from);
+    while (out.length < n) { d.setDate(d.getDate() + 1); if (d.getDay() % 6) out.push(new Date(d)); }
+    return out;
+  }
+
+  // One entry per day (the last run of each day)
+  function dailyRows(rows) {
+    const byDay = new Map();
+    for (const r of rows) byDay.set(r.date.toDateString(), r);
+    return [...byDay.values()];
+  }
+
+  function forecastFromLog(rows) {
+    const days = dailyRows(rows);
+    const moves = [];
+    for (let i = 1; i < days.length; i++) {
+      const gap = Math.max(1, Math.round((days[i].date - days[i - 1].date) / 864e5 * 5 / 7));
+      moves.push(Math.log(days[i].spy / days[i - 1].spy) / Math.sqrt(gap));
+    }
+    if (moves.length < 5) return null;
+    const mean = moves.reduce((a, b) => a + b, 0) / moves.length;
+    const sd = Math.sqrt(moves.reduce((a, b) => a + (b - mean) ** 2, 0) / (moves.length - 1));
+    return {
+      estimated: true,
+      prob_up: days[days.length - 1].prob,
+      daily_volatility: sd,
+      avg_abs_move: sd * Math.sqrt(2 / Math.PI),
+      made_at: days[days.length - 1].stamp,
+      closes: days.map(r => [r.date, r.spy]),
+    };
+  }
+
+  async function loadForecast(rows) {
+    try {
+      const f = JSON.parse(await fetchText("forecast.json"));
+      if (f && f.closes && f.closes.length > 5) {
+        f.closes = f.closes.map(([d, c]) => [new Date(d + "T16:00"), +c]);
+        return f;
+      }
+    } catch (e) { /* no forecast file yet */ }
+    return forecastFromLog(rows);
+  }
+
+  // How often the Random Forest's lean (above/below 50%) matched SPY's next move in the log
+  function hintScore(rows) {
+    const days = dailyRows(rows);
+    let right = 0, total = 0;
+    for (let i = 1; i < days.length; i++) {
+      const lean = days[i - 1].prob - 0.5, move = days[i].spy - days[i - 1].spy;
+      if (lean === 0 || move === 0) continue;
+      total++; if ((lean > 0) === (move > 0)) right++;
+    }
+    return { right, total };
+  }
+
+  function buildCone(f) {
+    const [lastDate, p0] = f.closes[f.closes.length - 1];
+    const sigma = f.daily_volatility;
+    const tilt = (2 * f.prob_up - 1) * f.avg_abs_move;           // one day's lean, then flat
+    const pts = nextWeekdays(lastDate, HORIZON).map((d, i) => {
+      const mid = Math.log(p0) + tilt, w = sigma * Math.sqrt(i + 1);
+      return { date: d, mid: Math.exp(mid), lo50: Math.exp(mid - Z50 * w), hi50: Math.exp(mid + Z50 * w),
+               lo90: Math.exp(mid - Z90 * w), hi90: Math.exp(mid + Z90 * w) };
+    });
+    return { lastDate, p0, sigma, tilt, pts };
+  }
+
+  let fcChart = null, fcData = null;
+  function drawForecast(f, rows) {
+    fcData = [f, rows];
+    const msg = $("fcMsg");
+    if (!f) { msg.hidden = false; msg.textContent = "The forecast appears after a few more days of results."; return; }
+    msg.hidden = true;
+    const c = buildCone(f), end = c.pts[c.pts.length - 1];
+    const dollars = x => "$" + x.toFixed(2);
+
+    $("fcSub").textContent = `The likely range for SPY's price over the next ${HORIZON} trading days (about two weeks), ` +
+      `based on how much it has moved lately. Starts from the ${fmtDate(c.lastDate)} price of ${dollars(c.p0)}.`;
+    $("fcRange").innerHTML =
+      `<div>Middle estimate for ${fmtDate(end.date)}<b>${dollars(end.mid)}</b>${pct(end.mid / c.p0 - 1)} from now</div>` +
+      `<div>Likely range (50% chance)<b>${dollars(end.lo50)} – ${dollars(end.hi50)}</b>Half the time it should land in here</div>` +
+      `<div>Wide range (90% chance)<b>${dollars(end.lo90)} – ${dollars(end.hi90)}</b>Only a 1 in 10 chance of ending outside</div>`;
+    const lean = f.prob_up > 0.505 ? "leans slightly up" : f.prob_up < 0.495 ? "leans slightly down" : "has no lean";
+    $("fcHow").textContent = `A typical day's move lately is about ±${(c.sigma * 100).toFixed(2)}% (≈ $${(c.p0 * c.sigma).toFixed(2)}). ` +
+      `The AI ${lean} (${(f.prob_up * 100).toFixed(1)}% chance of an up day), so the middle line is shifted ${pct(Math.exp(c.tilt) - 1)}. ` +
+      (f.estimated ? "Estimated from the trade log until the bot's next run saves full daily prices. " : `Updated ${f.made_at} UTC. `) +
+      "This is a statistical range, not a promise.";
+    const sc = hintScore(rows);
+    $("fcScore").textContent = sc.total
+      ? `So far the AI's up/down lean matched SPY's next move ${sc.right} of ${sc.total} times (${Math.round(sc.right / sc.total * 100)}%). ` +
+        `A coin flip would get about 50%, so treat the tilt as a small hint, not a signal.`
+      : "Not enough days logged yet to score the AI's lean.";
+
+    if (!window.Chart) return;
+    const css = getComputedStyle(document.documentElement), v = name => css.getPropertyValue(name).trim();
+    const past = f.closes, n = past.length, pad = Array(n - 1).fill(null);
+    const labels = past.map(([d]) => d).concat(c.pts.map(p => p.date));
+    const actual = past.map(([, p]) => p).concat(Array(HORIZON).fill(null));
+    const seg = key => pad.concat([c.p0], c.pts.map(p => p[key]));   // forecast lines start at the last real price
+    const band = (key, fill, color) => ({ data: seg(key), fill, backgroundColor: color, borderWidth: 0,
+                                          pointRadius: 0, pointHoverRadius: 0, tension: 0.3 });
+
+    if (fcChart) fcChart.destroy();
+    fcChart = new Chart($("fcChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "lo90", ...band("lo90", false, "transparent") },
+          { label: "hi90", ...band("hi90", "-1", v("--band90")) },
+          { label: "lo50", ...band("lo50", false, "transparent") },
+          { label: "hi50", ...band("hi50", "-1", v("--band50")) },
+          { label: "Middle estimate", data: seg("mid"), borderColor: v("--ai"), borderWidth: 2, borderDash: [5, 4],
+            pointRadius: 0, pointHoverRadius: 4, tension: 0.3, fill: false },
+          { label: "SPY price", data: actual, borderColor: v("--spy"), backgroundColor: v("--spy"), borderWidth: 2,
+            pointRadius: 0, pointHoverRadius: 5, tension: 0.2, fill: false },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            filter: item => item.dataset.label === "SPY price" ? item.parsed.y != null
+                          : item.dataset.label === "Middle estimate" && item.dataIndex >= n,
+            callbacks: {
+              title: items => items.length ? fmtDateLong(labels[items[0].dataIndex]) + (items[0].dataIndex >= n ? " (forecast)" : "") : "",
+              label: item => item.dataset.label === "SPY price" ? ` SPY closed at ${dollars(item.parsed.y)}`
+                                                                : ` Middle estimate: ${dollars(item.parsed.y)}`,
+              afterBody: items => {
+                const i = items.length ? items[0].dataIndex - n : -1;
+                if (i < 0) return [];
+                const p = c.pts[i];
+                return [`Likely (50%): ${dollars(p.lo50)} – ${dollars(p.hi50)}`, `Wide (90%): ${dollars(p.lo90)} – ${dollars(p.hi90)}`];
+              },
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, border: { color: v("--line") },
+               ticks: { color: v("--muted"), maxRotation: 0, autoSkip: true, maxTicksLimit: 6, callback: (_, i) => fmtDate(labels[i]) } },
+          y: { grid: { color: v("--line") }, border: { display: false },
+               ticks: { color: v("--muted"), maxTicksLimit: 6, callback: x => "$" + Math.round(x) } },
+        },
+      },
+    });
+  }
+
   // Redraw with the right colors if the phone switches between light and dark mode
-  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => lastData && drawChart(...lastData));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { lastData && drawChart(...lastData); fcData && drawForecast(...fcData); });
 
   load().then(rows => {
-    if (rows.length) return render(rows);
+    if (rows.length) { render(rows); return loadForecast(rows).then(f => drawForecast(f, rows)); }
     $("verdict").textContent = "No trades yet";
     $("latest").textContent = "The first update arrives the next weekday morning.";
     $("rows").innerHTML = `<tr><td colspan="5" class="empty">No decisions yet.</td></tr>`;
