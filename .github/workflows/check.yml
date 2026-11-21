@@ -1,0 +1,56 @@
+name: Check the AI
+
+# Runs on every pull request (and from the Actions tab) to make sure a change doesn't break the bot.
+# It never places a trade: it grades the models on real data and checks the website's code.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install packages
+        run: pip install -r requirements.txt
+
+      - name: Python compiles
+        run: python -m py_compile bot.py
+
+      - name: Grade the AI on real data (no trading)
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+        run: |
+          if [ -z "$ALPACA_API_KEY" ]; then
+            echo "No Alpaca keys available here, skipping the data test."
+            exit 0
+          fi
+          python bot.py report
+          python - <<'PY'
+          import json
+          r = json.load(open("model_report.json"))
+          assert r["test_days"] > 300, "report card used too few days"
+          for k, m in r["models"].items():
+              assert 0.3 < m["accuracy"] < 0.8, f"{k} accuracy looks broken: {m['accuracy']}"
+          print("Report card looks sane.")
+          PY
+
+      - name: Website JavaScript has no syntax errors
+        run: |
+          python - <<'PY'
+          import re
+          html = open("index.html").read()
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+          open("/tmp/page.js", "w").write("\n;\n".join(scripts))
+          PY
+          node --check /tmp/page.js && echo "Website code parses."

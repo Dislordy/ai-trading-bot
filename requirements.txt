@@ -1,5 +1,6 @@
 alpaca-py
 scikit-learn
 pandas
+numpy
 python-dotenv
 anthropic

@@ -40,6 +40,15 @@ the 5% base position. The Claude API is billed per use (roughly a few cents per 
 
 That's it. It now runs on its own every weekday morning.
 
+## What's inside the AI
+- **A team of three models** (Random Forest, Gradient Boosting, Logistic Regression) votes on tomorrow's odds using 15 signals: momentum over several time spans, trend vs. the 20/50/200-day averages, volatility, volume, RSI, MACD, Bollinger band position and distance from the 1-year high.
+- **Walk-forward report card:** every run re-grades the models on ~3 years of days they never saw, compared with simply guessing "up". Run it yourself with `python bot.py report`.
+- **Claude as the decision maker:** Claude sees the vote, the report card, a market snapshot and a memory of its last 10 calls (and what SPY did next), then picks the position size and writes a briefing: market mood, its own 5-day odds, confidence, key factors and what would change its mind.
+- **Safety in code, not in the AI:** paper keys only, about 5% of the account normally, $20,000 max on a big bet, and a stop-loss so one bet can never lose more than $1,000.
+
+## The website
+AI briefing, a forecast range for the next two weeks, a "You vs. the AI" guessing game, performance vs. holding SPY, the AI report card (accuracy, calibration and the signals that matter), and every decision with Claude's reasoning.
+
 ## Checking on it
 - **Website** (your GitHub Pages link): account value vs. holding SPY, profit/loss, win rate, biggest drop, and every decision with Claude's reasoning.
 - **Alpaca app or website**: your positions and order history.
